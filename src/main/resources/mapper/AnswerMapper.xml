@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerMapper">
+
+    <resultMap id="answerResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerPersistenceRecord">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="questionId" column="question_id"/>
+        <result property="traceId" column="trace_id"/>
+        <result property="regeneratedFromAnswerId" column="regenerated_from_answer_id"/>
+        <result property="status" column="status"/>
+        <result property="content" column="content"/>
+        <result property="errorCode" column="error_code"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="completedAt" column="completed_at"/>
+        <result property="cancelReason" column="cancel_reason"/>
+        <result property="cancelledStage" column="cancelled_stage"/>
+        <result property="providerMessageId" column="provider_message_id"/>
+        <result property="cancelErrorCode" column="cancel_error_code"/>
+        <result property="cancelRequestedAt" column="cancel_requested_at"/>
+        <result property="cancelledAt" column="cancelled_at"/>
+    </resultMap>
+
+    <sql id="answerColumns">
+        a.id, a.conversation_id, a.question_id, a.trace_id,
+        a.regenerated_from_answer_id, a.status, a.content, a.error_code,
+        a.created_at, a.completed_at, a.cancel_reason, a.cancelled_stage, a.provider_message_id,
+        a.cancel_error_code, a.cancel_requested_at, a.cancelled_at
+    </sql>
+
+    <select id="selectByIdempotencyKey" resultMap="answerResult">
+        SELECT <include refid="answerColumns"/>
+        FROM qa_answer a
+        INNER JOIN qa_conversation c ON c.id = a.conversation_id
+        WHERE a.owner_id = #{ownerId}
+          AND a.idempotency_key = #{idempotencyKey}
+          AND c.deleted_at IS NULL
+    </select>
+
+    <select id="selectByOwnerAndId" resultMap="answerResult">
+        SELECT <include refid="answerColumns"/>
+        FROM qa_answer a
+        INNER JOIN qa_conversation c ON c.id = a.conversation_id
+        WHERE a.id = #{id}
+          AND c.owner_id = #{ownerId}
+          AND c.deleted_at IS NULL
+    </select>
+
+    <select id="selectQuestion" resultType="java.lang.String">
+        SELECT m.content
+        FROM qa_answer a
+        INNER JOIN qa_message m ON m.id = a.question_id
+        INNER JOIN qa_conversation c ON c.id = a.conversation_id
+        WHERE a.id = #{id}
+          AND c.owner_id = #{ownerId}
+          AND c.deleted_at IS NULL
+    </select>
+
+</mapper>

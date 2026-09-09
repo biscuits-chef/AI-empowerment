@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Bootstrap"
+  short_description: "Bootstrap a production Java service safely"
+  default_prompt: "Use $project-bootstrap to initialize this service from the production harness."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GoldenDB Engineering"
+  short_description: "Engineer safe GoldenDB persistence"
+  default_prompt: "Use $goldendb-engineering to design and verify this database change."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Development"
+  short_description: "Implement a tested production feature"
+  default_prompt: "Use $feature-development to implement this feature end to end and pass every gate."

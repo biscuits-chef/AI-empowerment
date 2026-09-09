@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+    <comment>测试环境配置</comment>
+    <entry key="spring.datasource.url">${TEST_DB_URL}</entry>
+    <entry key="spring.datasource.username">${TEST_DB_USERNAME}</entry>
+    <entry key="spring.datasource.password">${TEST_DB_PASSWORD}</entry>
+    <entry key="spring.redis.host">${TEST_REDIS_HOST:127.0.0.1}</entry>
+    <entry key="spring.redis.port">${TEST_REDIS_PORT:6379}</entry>
+    <entry key="spring.redis.password">${TEST_REDIS_PASSWORD:}</entry>
+    <entry key="management.endpoints.web.exposure.include">health,info,metrics,prometheus</entry>
+    <entry key="management.endpoint.health.show-details">when_authorized</entry>
+    <entry key="app.runtime.stage">TEST</entry>
+    <entry key="app.runtime.profile">test</entry>
+    <entry key="app.auth.mode">corporate</entry>
+    <entry key="app.auth.mock-user-id"></entry>
+    <entry key="app.qa.demo-mode">${TEST_QA_DEMO_MODE:false}</entry>
+    <entry key="app.business-query.enabled">${TEST_BUSINESS_QUERY_ENABLED:false}</entry>
+    <entry key="app.company-model.enabled">${TEST_COMPANY_MODEL_ENABLED:false}</entry>
+    <entry key="app.company-model.stream-contract-verified">${TEST_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED:false}</entry>
+    <entry key="app.company-model.base-url">${TEST_COMPANY_MODEL_BASE_URL:}</entry>
+    <entry key="app.redis.enabled">${TEST_REDIS_ENABLED:false}</entry>
+    <entry key="app.obs.enabled">${TEST_OBS_ENABLED:false}</entry>
+    <entry key="app.file.storage-mode">${TEST_FILE_STORAGE_MODE:disabled}</entry>
+    <entry key="app.file.allow-unprocessed-ready">false</entry>
+</properties>

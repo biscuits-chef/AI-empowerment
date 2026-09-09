@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationMapper">
+
+    <resultMap id="conversationResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord">
+        <id property="id" column="id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="title" column="title"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="messageResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersistenceRecord">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="answerId" column="answer_id"/>
+        <result property="answerStatus" column="answer_status"/>
+        <result property="role" column="role"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <resultMap id="messageAttachmentResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.MessageAttachmentPersistenceRecord">
+        <result property="messageId" column="message_id"/>
+        <result property="fileId" column="file_id"/>
+        <result property="originalName" column="original_name"/>
+        <result property="contentType" column="content_type"/>
+        <result property="sizeBytes" column="size_bytes"/>
+        <result property="usageType" column="usage_type"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <sql id="conversationColumns">
+        id, owner_id, title, created_at, updated_at
+    </sql>
+
+    <select id="selectByOwner" resultMap="conversationResult">
+        SELECT <include refid="conversationColumns"/>
+        FROM qa_conversation
+        WHERE owner_id = #{ownerId}
+          AND deleted_at IS NULL
+        <if test="beforeUpdatedAt != null">
+          AND (updated_at &lt; #{beforeUpdatedAt}
+            OR (updated_at = #{beforeUpdatedAt} AND id &lt; #{beforeId}))
+        </if>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countActiveAnswers" resultType="int">
+        SELECT COUNT(1)
+        FROM qa_answer a
+        INNER JOIN qa_conversation c ON c.id = a.conversation_id
+        WHERE c.id = #{id}
+          AND c.owner_id = #{ownerId}
+          AND c.deleted_at IS NULL
+          AND a.status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING', 'CANCEL_REQUESTED')
+    </select>
+
+    <select id="selectActiveForUpdate" resultMap="conversationResult">
+        SELECT <include refid="conversationColumns"/>
+        FROM qa_conversation
+        WHERE id = #{id}
+          AND owner_id = #{ownerId}
+          AND deleted_at IS NULL
+        FOR UPDATE
+    </select>
+
+    <select id="selectMessages" resultMap="messageResult">
+        SELECT m.id, m.conversation_id, m.answer_id, a.status AS answer_status,
+               m.role, m.content, m.created_at
+        FROM qa_message m
+        INNER JOIN qa_conversation c ON c.id = m.conversation_id
+        LEFT JOIN qa_answer a ON a.id = m.answer_id
+        WHERE c.id = #{id}
+          AND c.owner_id = #{ownerId}
+          AND c.deleted_at IS NULL
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectMessageAttachments" resultMap="messageAttachmentResult">
+        SELECT qf.question_id AS message_id, f.id AS file_id, f.original_name,
+               f.content_type, f.size_bytes, qf.usage_type, f.status
+        FROM qa_question_file qf
+        INNER JOIN qa_file f ON f.id = qf.file_id
+        INNER JOIN qa_conversation c ON c.id = f.conversation_id
+        WHERE c.id = #{id}
+          AND c.owner_id = #{ownerId}
+          AND c.deleted_at IS NULL
+          AND f.owner_id = #{ownerId}
+          AND qf.question_id IN
+          <foreach collection="messageIds" item="messageId" open="(" separator="," close=")">
+              #{messageId}
+          </foreach>
+        ORDER BY qf.created_at ASC, qf.file_id ASC
+    </select>
+
+</mapper>

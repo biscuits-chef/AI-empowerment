@@ -1,0 +1,2 @@
+ALTER TABLE qa_message
+    MODIFY COLUMN content MEDIUMTEXT NOT NULL;

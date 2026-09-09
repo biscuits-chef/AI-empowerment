@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerCancellationMapper">
+
+    <resultMap id="cancellationTaskMap"
+               type="com.acme.intelligentqa.adapter.out.persistence.mybatis.CancellationTaskPersistenceRecord">
+        <id property="answerId" column="answer_id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="providerMessageId" column="provider_message_id"/>
+        <result property="cancelledStage" column="cancelled_stage"/>
+        <result property="attemptCount" column="attempt_count"/>
+    </resultMap>
+
+    <update id="request">
+        UPDATE qa_answer
+        SET cancelled_stage = status,
+            status = 'CANCEL_REQUESTED',
+            cancel_idempotency_key = #{idempotencyKey},
+            cancel_reason = #{reason},
+            cancel_requested_at = #{requestedAt},
+            cancel_error_code = NULL
+        WHERE id = #{answerId}
+          AND owner_id = #{ownerId}
+          AND status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING')
+    </update>
+
+    <insert id="insertTask">
+        INSERT INTO qa_answer_cancel_task (
+            answer_id, task_status, attempt_count, next_attempt_at,
+            lease_owner, lease_until, last_error_code, created_at, updated_at
+        ) VALUES (
+            #{answerId}, 'PENDING', 0, #{nextAttemptAt},
+            NULL, NULL, NULL, #{now}, #{now}
+        )
+    </insert>
+
+    <select id="countCancellationRequested" resultType="int">
+        SELECT COUNT(1)
+        FROM qa_answer
+        WHERE id = #{answerId}
+          AND status IN ('CANCEL_REQUESTED', 'CANCELLED', 'CANCEL_FAILED')
+    </select>
+
+    <update id="recordProviderMessageId">
+        UPDATE qa_answer
+        SET provider_message_id = #{providerMessageId}
+        WHERE id = #{answerId}
+          AND status IN ('GENERATING', 'CANCEL_REQUESTED')
+          AND (provider_message_id IS NULL OR provider_message_id = #{providerMessageId})
+    </update>
+
+    <update id="wakeTask">
+        UPDATE qa_answer_cancel_task
+        SET next_attempt_at = #{dispatchAt},
+            updated_at = #{dispatchAt}
+        WHERE answer_id = #{answerId}
+          AND task_status = 'PENDING'
+    </update>
+
+    <select id="selectDispatchable" resultType="java.lang.String">
+        SELECT answer_id
+        FROM qa_answer_cancel_task
+        WHERE (task_status = 'PENDING' AND next_attempt_at &lt;= #{now})
+           OR (task_status = 'PROCESSING' AND lease_until &lt;= #{now})
+        ORDER BY next_attempt_at ASC, answer_id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markAnswerExpiredExhausted">
+        UPDATE qa_answer
+        SET status = 'CANCEL_FAILED',
+            cancel_error_code = #{errorCode},
+            completed_at = #{now}
+        WHERE id = #{answerId}
+          AND status = 'CANCEL_REQUESTED'
+          AND EXISTS (
+              SELECT 1
+              FROM qa_answer_cancel_task
+              WHERE answer_id = #{answerId}
+                AND task_status = 'PROCESSING'
+                AND lease_until &lt;= #{now}
+                AND attempt_count &gt;= #{maximumAttempts}
+          )
+    </update>
+
+    <update id="failTaskExpiredExhausted">
+        UPDATE qa_answer_cancel_task
+        SET task_status = 'FAILED',
+            lease_owner = NULL,
+            lease_until = NULL,
+            last_error_code = #{errorCode},
+            updated_at = #{now}
+        WHERE answer_id = #{answerId}
+          AND task_status = 'PROCESSING'
+          AND lease_until &lt;= #{now}
+          AND attempt_count &gt;= #{maximumAttempts}
+    </update>
+
+    <update id="claim">
+        UPDATE qa_answer_cancel_task
+        SET task_status = 'PROCESSING',
+            lease_owner = #{workerId},
+            lease_until = #{leaseUntil},
+            attempt_count = attempt_count + 1,
+            updated_at = #{now}
+        WHERE answer_id = #{answerId}
+          AND (
+              (task_status = 'PENDING'
+                  AND next_attempt_at &lt;= #{now}
+                  AND attempt_count &lt; #{maximumAttempts})
+              OR (task_status = 'PROCESSING'
+                  AND lease_until &lt;= #{now}
+                  AND attempt_count &lt; #{maximumAttempts})
+          )
+    </update>
+
+    <select id="selectClaimed" resultMap="cancellationTaskMap">
+        SELECT t.answer_id,
+               a.owner_id,
+               a.provider_message_id,
+               a.cancelled_stage,
+               t.attempt_count
+        FROM qa_answer_cancel_task t
+        JOIN qa_answer a ON a.id = t.answer_id
+        WHERE t.answer_id = #{answerId}
+          AND t.task_status = 'PROCESSING'
+          AND t.lease_owner = #{workerId}
+          AND a.status = 'CANCEL_REQUESTED'
+    </select>
+
+    <update id="markCancelled">
+        UPDATE qa_answer
+        SET status = 'CANCELLED',
+            cancelled_at = #{cancelledAt},
+            completed_at = #{cancelledAt},
+            cancel_error_code = NULL
+        WHERE id = #{answerId}
+          AND status = 'CANCEL_REQUESTED'
+          AND EXISTS (
+              SELECT 1 FROM qa_answer_cancel_task
+              WHERE answer_id = #{answerId}
+                AND task_status = 'PROCESSING'
+                AND lease_owner = #{workerId}
+          )
+    </update>
+
+    <update id="completeTask">
+        UPDATE qa_answer_cancel_task
+        SET task_status = 'COMPLETED',
+            lease_owner = NULL,
+            lease_until = NULL,
+            last_error_code = NULL,
+            updated_at = #{now}
+        WHERE answer_id = #{answerId}
+          AND task_status = 'PROCESSING'
+          AND lease_owner = #{workerId}
+    </update>
+
+    <update id="reschedule">
+        UPDATE qa_answer_cancel_task
+        SET task_status = 'PENDING',
+            next_attempt_at = #{nextAttemptAt},
+            lease_owner = NULL,
+            lease_until = NULL,
+            last_error_code = #{errorCode},
+            updated_at = #{nextAttemptAt}
+        WHERE answer_id = #{answerId}
+          AND task_status = 'PROCESSING'
+          AND lease_owner = #{workerId}
+    </update>
+
+    <update id="recordAnswerCancellationError">
+        UPDATE qa_answer
+        SET cancel_error_code = #{errorCode}
+        WHERE id = #{answerId}
+          AND status = 'CANCEL_REQUESTED'
+    </update>
+
+    <update id="markFailed">
+        UPDATE qa_answer
+        SET status = 'CANCEL_FAILED',
+            cancel_error_code = #{errorCode},
+            completed_at = #{failedAt}
+        WHERE id = #{answerId}
+          AND status = 'CANCEL_REQUESTED'
+          AND EXISTS (
+              SELECT 1 FROM qa_answer_cancel_task
+              WHERE answer_id = #{answerId}
+                AND task_status = 'PROCESSING'
+                AND lease_owner = #{workerId}
+          )
+    </update>
+
+    <update id="failTask">
+        UPDATE qa_answer_cancel_task
+        SET task_status = 'FAILED',
+            lease_owner = NULL,
+            lease_until = NULL,
+            last_error_code = #{errorCode},
+            updated_at = #{failedAt}
+        WHERE answer_id = #{answerId}
+          AND task_status = 'PROCESSING'
+          AND lease_owner = #{workerId}
+    </update>
+</mapper>

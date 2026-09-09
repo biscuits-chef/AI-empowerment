@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Engineering"
+  short_description: "Prove changes through production gates"
+  default_prompt: "Use $quality-engineering to add evidence and make the full Maven quality gate pass."

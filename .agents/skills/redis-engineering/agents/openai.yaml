@@ -1,0 +1,4 @@
+interface:
+  display_name: "Redis Engineering"
+  short_description: "Design bounded resilient Redis usage"
+  default_prompt: "Use $redis-engineering to implement and validate these Redis semantics."

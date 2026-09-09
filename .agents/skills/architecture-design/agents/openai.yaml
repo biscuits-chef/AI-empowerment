@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Design"
+  short_description: "Design boundaries and durable decisions"
+  default_prompt: "Use $architecture-design to design this change and record any required ADR."

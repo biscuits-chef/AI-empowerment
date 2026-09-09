@@ -1,0 +1,4 @@
+interface:
+  display_name: "OBS Integration"
+  short_description: "Build safe Huawei OBS adapters"
+  default_prompt: "Use $obs-integration to implement this OBS workflow with partial-failure handling."

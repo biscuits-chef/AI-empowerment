@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerFeedbackMapper">
+
+    <insert id="upsert">
+        INSERT INTO qa_answer_feedback
+            (answer_id, owner_id, feedback_type, created_at, updated_at)
+        VALUES
+            (#{answerId}, #{ownerId}, #{feedbackType}, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            feedback_type = #{feedbackType}, updated_at = #{now}
+    </insert>
+</mapper>

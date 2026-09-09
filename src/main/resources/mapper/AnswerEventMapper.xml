@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerEventMapper">
+
+    <resultMap id="answerEventResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerEventPersistenceRecord">
+        <id property="eventId" column="event_id"/>
+        <result property="answerId" column="answer_id"/>
+        <result property="eventType" column="event_type"/>
+        <result property="eventData" column="event_data"/>
+        <result property="occurredAt" column="occurred_at"/>
+    </resultMap>
+
+    <select id="selectAfter" resultMap="answerEventResult">
+        SELECT event_id, answer_id, event_type, event_data, occurred_at
+        FROM qa_answer_event
+        WHERE answer_id = #{answerId}
+          AND event_id &gt; #{afterSequence}
+        ORDER BY event_id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countSequence" resultType="int">
+        SELECT COUNT(1)
+        FROM qa_answer_event
+        WHERE answer_id = #{answerId}
+          AND event_id = #{sequence}
+    </select>
+
+    <select id="selectDisplayEvents" resultMap="answerEventResult">
+        SELECT e.event_id, e.answer_id, e.event_type, e.event_data, e.occurred_at
+        FROM qa_answer_event e
+        INNER JOIN qa_answer a ON a.id = e.answer_id
+        INNER JOIN qa_conversation c ON c.id = a.conversation_id
+        WHERE c.id = #{conversationId}
+          AND c.owner_id = #{ownerId}
+          AND c.deleted_at IS NULL
+          AND e.event_type NOT IN ('delta', 'metadata')
+          AND e.answer_id IN
+          <foreach collection="answerIds" item="answerId" open="(" separator="," close=")">
+              #{answerId}
+          </foreach>
+        ORDER BY e.event_id ASC
+    </select>
+
+</mapper>

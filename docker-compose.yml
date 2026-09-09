@@ -1,0 +1,63 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DEV_DB_URL: jdbc:mysql://goldendb-dev:3306/intelligent_qa?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+      DEV_DB_USERNAME: intelligent_qa
+      DEV_DB_PASSWORD: local-only
+      DEV_REDIS_HOST: redis
+      DEV_REDIS_PORT: 6379
+      DEV_REDIS_ENABLED: "false"
+      DEV_OBS_ENABLED: "false"
+      DEV_QA_DEMO_MODE: "true"
+      DEV_BUSINESS_QUERY_ENABLED: "true"
+    depends_on:
+      goldendb-dev:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Local compatibility stand-in only. Validate SQL against a real GoldenDB environment before release.
+  goldendb-dev:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: intelligent_qa
+      MYSQL_USER: intelligent_qa
+      MYSQL_PASSWORD: local-only
+      MYSQL_ROOT_PASSWORD: local-root-only
+    ports:
+      - "3306:3306"
+    volumes:
+      - goldendb-dev-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -plocal-root-only --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  goldendb-dev-data:
+  redis-data:

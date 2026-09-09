@@ -1,0 +1,4 @@
+interface:
+  display_name: "Production Readiness"
+  short_description: "Gate a service for safe production release"
+  default_prompt: "Use $production-readiness to assess this release and identify evidence-backed blockers."

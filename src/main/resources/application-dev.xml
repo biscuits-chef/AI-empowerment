@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+    <comment>开发环境配置</comment>
+    <entry key="spring.datasource.url">${DEV_DB_URL:jdbc:mysql://127.0.0.1:3306/intelligent_qa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false}</entry>
+    <entry key="spring.datasource.username">${DEV_DB_USERNAME:intelligent_qa}</entry>
+    <entry key="spring.datasource.password">${DEV_DB_PASSWORD:local-only}</entry>
+    <entry key="spring.redis.host">${DEV_REDIS_HOST:127.0.0.1}</entry>
+    <entry key="spring.redis.port">${DEV_REDIS_PORT:6379}</entry>
+    <entry key="spring.redis.password">${DEV_REDIS_PASSWORD:}</entry>
+    <entry key="management.endpoints.web.exposure.include">health,info,metrics,prometheus</entry>
+    <entry key="management.endpoint.health.show-details">always</entry>
+    <entry key="app.runtime.stage">DEVELOPMENT</entry>
+    <entry key="app.runtime.profile">dev</entry>
+    <entry key="app.auth.mode">${DEV_AUTH_MODE:mock}</entry>
+    <entry key="app.auth.mock-user-id">${DEV_MOCK_USER_ID:dev-user-001}</entry>
+    <entry key="app.qa.demo-mode">${DEV_QA_DEMO_MODE:true}</entry>
+    <entry key="app.business-query.enabled">${DEV_BUSINESS_QUERY_ENABLED:true}</entry>
+    <entry key="app.company-model.enabled">${DEV_COMPANY_MODEL_ENABLED:false}</entry>
+    <entry key="app.company-model.stream-contract-verified">${DEV_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED:false}</entry>
+    <entry key="app.company-model.base-url">${DEV_COMPANY_MODEL_BASE_URL:}</entry>
+    <entry key="app.redis.enabled">${DEV_REDIS_ENABLED:false}</entry>
+    <entry key="app.obs.enabled">${DEV_OBS_ENABLED:false}</entry>
+    <entry key="app.file.storage-mode">${DEV_FILE_STORAGE_MODE:local}</entry>
+    <entry key="app.file.allow-unprocessed-ready">${DEV_FILE_ALLOW_UNPROCESSED_READY:true}</entry>
+</properties>

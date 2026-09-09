@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.business.BusinessQueryMapper">
+    <!-- 产品查询只允许访问数据中台同步的产品快照表，所有用户值均通过预编译参数绑定。 -->
+    <select id="selectLatestPartitionDate" resultType="string">
+        SELECT MAX(DT)
+          FROM dws_product_info_d
+         WHERE DT &lt;= #{businessDate}
+    </select>
+
+    <!-- 候选检索保留多条结果供上游消歧，禁止在数据层静默选择第一条记录。 -->
+    <select id="selectProductCandidates" resultType="map">
+        SELECT PRDC_CD AS productCode,
+               PRDC_NM AS productName,
+               PRDC_ABBR AS productAbbr,
+               PRDC_FLL_NM AS productFullName,
+               DT AS snapshotDate
+         FROM dws_product_info_d
+         WHERE DT = #{partitionDate}
+           AND #{entityReference} &lt;&gt; ''
+           AND (PRDC_CD = #{entityReference}
+                OR PRDC_NM = #{entityReference}
+                OR PRDC_ABBR = #{entityReference}
+                OR PRDC_FLL_NM = #{entityReference}
+                OR LOCATE(#{entityReference}, PRDC_NM) &gt; 0
+                OR LOCATE(#{entityReference}, PRDC_ABBR) &gt; 0
+                OR LOCATE(#{entityReference}, PRDC_FLL_NM) &gt; 0)
+         ORDER BY CASE
+                    WHEN PRDC_CD = #{entityReference} THEN 0
+                    WHEN PRDC_NM = #{entityReference} THEN 1
+                    WHEN PRDC_ABBR = #{entityReference} THEN 2
+                    WHEN PRDC_FLL_NM = #{entityReference} THEN 3
+                    ELSE 4
+                  END,
+                  PRDC_CD ASC
+         LIMIT #{limit}
+    </select>
+
+    <!-- 已消歧产品查询必须固定在同一快照，并同时返回监管和产品部两种投资经理口径。 -->
+    <select id="selectProductFacts" resultType="map">
+        SELECT PRDC_CD AS productCode,
+               PRDC_NM AS productName,
+               PRDC_ABBR AS productAbbr,
+               PRDC_FLL_NM AS productFullName,
+               PRDC_MNGR_NM AS productManager,
+               INVS_MNGR_NM AS regulatoryInvestmentManager,
+               PRDC_INVS_MNGR AS departmentInvestmentManager,
+               PRDC_FRM AS productForm,
+               PROD_MAT_DT AS endDate,
+               PROD_MAT_DT AS productMaturityDate,
+               PERI_OPEN_BASE_DT AS periodicOpenBaseDate,
+               DT AS snapshotDate
+         FROM dws_product_info_d
+         WHERE DT = #{partitionDate}
+           AND #{entityReference} &lt;&gt; ''
+           AND (PRDC_CD = #{entityReference}
+                OR PRDC_NM = #{entityReference}
+                OR PRDC_ABBR = #{entityReference}
+                OR PRDC_FLL_NM = #{entityReference})
+         ORDER BY PRDC_CD ASC
+         LIMIT #{limit}
+    </select>
+
+    <!-- 同时返回两个日期命中标志，防止同一产品同时命中时丢失原因。 -->
+    <select id="selectReferenceDateProducts" resultType="map">
+        SELECT PRDC_CD AS productCode,
+               PRDC_NM AS productName,
+               PROD_MAT_DT AS productMaturityDate,
+               PERI_OPEN_BASE_DT AS periodicOpenBaseDate,
+               DT AS snapshotDate,
+               CASE WHEN PERI_OPEN_BASE_DT = #{businessDate} THEN 1 ELSE 0 END
+                   AS periodicOpenBaseDateMatched,
+               CASE WHEN PROD_MAT_DT = #{businessDate} THEN 1 ELSE 0 END
+                   AS productMaturityDateMatched
+          FROM dws_product_info_d
+         WHERE DT = #{partitionDate}
+           AND (PERI_OPEN_BASE_DT = #{businessDate}
+                OR PROD_MAT_DT = #{businessDate})
+         ORDER BY PRDC_CD ASC
+         LIMIT #{limit}
+    </select>
+
+    <!-- 交易视图查询暂时保留以兼容既有计划；本次产品表迁移不创建该外部视图。 -->
+    <select id="selectTradeFacts" resultType="map">
+        SELECT trade_serial_number AS tradeSerialNumber,
+               product_code AS productCode,
+               trader_name AS traderName,
+               trade_date AS tradeDate,
+               updated_at AS updatedAt
+          FROM biz_semantic_trade_v
+         WHERE authorized_user_id = #{ownerId}
+           AND trade_serial_number = #{entityReference}
+         ORDER BY trade_serial_number ASC
+         LIMIT #{limit}
+    </select>
+</mapper>
