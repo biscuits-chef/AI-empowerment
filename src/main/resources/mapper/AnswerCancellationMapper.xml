@@ -8,7 +8,7 @@
                type="com.acme.intelligentqa.adapter.out.persistence.mybatis.CancellationTaskPersistenceRecord">
         <id property="answerId" column="answer_id"/>
         <result property="ownerId" column="owner_id"/>
-        <result property="providerMessageId" column="provider_message_id"/>
+        <result property="messageId" column="message_id"/>
         <result property="cancelledStage" column="cancelled_stage"/>
         <result property="attemptCount" column="attempt_count"/>
     </resultMap>
@@ -21,7 +21,7 @@
             cancel_reason = #{reason},
             cancel_requested_at = #{requestedAt},
             cancel_error_code = NULL
-        WHERE id = #{answerId}
+        WHERE public_id = #{answerId}
           AND owner_id = #{ownerId}
           AND status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING')
     </update>
@@ -39,16 +39,16 @@
     <select id="countCancellationRequested" resultType="int">
         SELECT COUNT(1)
         FROM qa_answer
-        WHERE id = #{answerId}
+        WHERE public_id = #{answerId}
           AND status IN ('CANCEL_REQUESTED', 'CANCELLED', 'CANCEL_FAILED')
     </select>
 
-    <update id="recordProviderMessageId">
+    <update id="recordMessageId">
         UPDATE qa_answer
-        SET provider_message_id = #{providerMessageId}
-        WHERE id = #{answerId}
+        SET message_id = #{messageId}
+        WHERE public_id = #{answerId}
           AND status IN ('GENERATING', 'CANCEL_REQUESTED')
-          AND (provider_message_id IS NULL OR provider_message_id = #{providerMessageId})
+          AND (message_id IS NULL OR message_id = #{messageId})
     </update>
 
     <update id="wakeTask">
@@ -73,7 +73,7 @@
         SET status = 'CANCEL_FAILED',
             cancel_error_code = #{errorCode},
             completed_at = #{now}
-        WHERE id = #{answerId}
+        WHERE public_id = #{answerId}
           AND status = 'CANCEL_REQUESTED'
           AND EXISTS (
               SELECT 1
@@ -119,11 +119,11 @@
     <select id="selectClaimed" resultMap="cancellationTaskMap">
         SELECT t.answer_id,
                a.owner_id,
-               a.provider_message_id,
+               a.message_id,
                a.cancelled_stage,
                t.attempt_count
         FROM qa_answer_cancel_task t
-        JOIN qa_answer a ON a.id = t.answer_id
+        JOIN qa_answer a ON a.public_id = t.answer_id
         WHERE t.answer_id = #{answerId}
           AND t.task_status = 'PROCESSING'
           AND t.lease_owner = #{workerId}
@@ -136,7 +136,7 @@
             cancelled_at = #{cancelledAt},
             completed_at = #{cancelledAt},
             cancel_error_code = NULL
-        WHERE id = #{answerId}
+        WHERE public_id = #{answerId}
           AND status = 'CANCEL_REQUESTED'
           AND EXISTS (
               SELECT 1 FROM qa_answer_cancel_task
@@ -174,7 +174,7 @@
     <update id="recordAnswerCancellationError">
         UPDATE qa_answer
         SET cancel_error_code = #{errorCode}
-        WHERE id = #{answerId}
+        WHERE public_id = #{answerId}
           AND status = 'CANCEL_REQUESTED'
     </update>
 
@@ -183,7 +183,7 @@
         SET status = 'CANCEL_FAILED',
             cancel_error_code = #{errorCode},
             completed_at = #{failedAt}
-        WHERE id = #{answerId}
+        WHERE public_id = #{answerId}
           AND status = 'CANCEL_REQUESTED'
           AND EXISTS (
               SELECT 1 FROM qa_answer_cancel_task

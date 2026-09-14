@@ -72,11 +72,18 @@ public interface LanguageModelPort {
         boolean isCancellationRequested();
 
         /**
+         * 持久化公司 HiAgent 应用会话 ID。
+         *
+         * @param appConversationId 公司 HiAgent 应用会话 ID。
+         */
+        default void onAppConversationId(final String appConversationId) { }
+
+        /**
          * 持久化公司模型消息 ID 并唤醒停止任务。
          *
-         * @param providerMessageId 公司模型侧消息 ID。
+         * @param messageId 公司模型侧消息 ID。
          */
-        void onProviderMessageId(String providerMessageId);
+        void onMessageId(String messageId);
     }
 
     /**
@@ -94,10 +101,10 @@ public interface LanguageModelPort {
         /**
          * 持久化公司模型消息 ID 并唤醒停止任务。
          *
-         * @param providerMessageId 公司模型侧消息 ID。
+         * @param messageId 公司模型侧消息 ID。
          */
         @Override
-        public void onProviderMessageId(final String providerMessageId) { }
+        public void onMessageId(final String messageId) { }
     }
 
     /**

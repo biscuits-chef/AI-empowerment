@@ -64,15 +64,15 @@ public interface AnswerCancellationMapper {
      *
      * @param answerId 回答 ID。
      *
-     * @param providerMessageId 公司模型侧消息 ID。
+     * @param messageId 公司模型侧消息 ID。
      *
      * @param dispatchAt 本次任务分发时间。
      *
      * @return 保存公司模型侧消息 ID。
      */
-    int recordProviderMessageId(
+    int recordMessageId(
             @Param("answerId") String answerId,
-            @Param("providerMessageId") String providerMessageId,
+            @Param("messageId") String messageId,
             @Param("dispatchAt") Timestamp dispatchAt);
 
     /**

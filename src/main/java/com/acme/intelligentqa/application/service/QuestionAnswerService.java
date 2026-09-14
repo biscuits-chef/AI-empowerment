@@ -13,10 +13,12 @@ import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.model.ChatMessage;
 import com.acme.intelligentqa.domain.model.ClarificationRequest;
+import com.acme.intelligentqa.domain.model.Conversation;
 import com.acme.intelligentqa.domain.model.ConversationContext;
 import com.acme.intelligentqa.domain.model.KnowledgeChunk;
 import com.acme.intelligentqa.domain.model.QueryScenario;
 import com.acme.intelligentqa.domain.model.QuestionFileReference;
+import com.acme.intelligentqa.domain.model.QuestionSubmission;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.out.AnswerEventPort;
 import com.acme.intelligentqa.domain.port.out.AnswerRepositoryPort;
@@ -67,6 +69,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
      * 会话仓储。
      */
     private final ConversationRepositoryPort conversationRepository;
+    /** 统一提问所属会话解析器。 */
+    private final QuestionSubmissionConversationResolver submissionConversationResolver;
     /**
      * 会话上下文仓储。
      */
@@ -149,6 +153,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
             final Clock clock,
             @Qualifier("qaExecutor") final Executor executor) {
         this.conversationRepository = conversationRepository;
+        this.submissionConversationResolver = new QuestionSubmissionConversationResolver(
+                conversationRepository, clock);
         this.contextRepository = contextRepository;
         this.answerRepository = answerRepository;
         this.questionFileCoordinator = questionFileCoordinator;
@@ -205,8 +211,31 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
             final String question,
             final List<QuestionFileReference> files,
             final String idempotencyKey) {
-        return submitForScenario(
-                ownerId, conversationId, QueryScenario.DUAL_CHANNEL_QA, question, files, idempotencyKey);
+        return submitWithAgent(
+                ownerId, conversationId, null, question, files, idempotencyKey).answer();
+    }
+
+    /**
+     * 使用一个事务提交首次或后续问题，并返回会话和回答受理结果。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param conversationId 会话 ID；首次提问时为空。
+     * @param agentType 用户选择的 Agent 类型。
+     * @param question 用户问题。
+     * @param files 本次问题引用的临时文件；第一阶段必须为空。
+     * @param idempotencyKey 覆盖会话、问题和回答创建的幂等键。
+     * @return 同一事务内持久化的会话和回答结果。
+     */
+    @Override
+    @Transactional
+    public QuestionSubmission submitQuestion(
+            final String ownerId,
+            final UUID conversationId,
+            final AgentType agentType,
+            final String question,
+            final List<QuestionFileReference> files,
+            final String idempotencyKey) {
+        return submitWithAgent(ownerId, conversationId, agentType, question, files, idempotencyKey);
     }
 
     /**
@@ -214,36 +243,50 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
      *
      * @param ownerId 用户所有者 ID。
      * @param conversationId 会话 ID。
-     * @param scenario 已通过 Agent 路由校验的后端查询场景。
+     * @param requestedAgentType 首次提问选择的 Agent 类型；已有会话可为空。
      * @param question 用户问题。
      * @param files 本次问题引用的临时文件。
      * @param idempotencyKey 幂等键。
-     * @return 问题受理后的回答快照。
+     * @return 同一事务内持久化的会话与回答结果。
      */
-    private AnswerSnapshot submitForScenario(
+    private QuestionSubmission submitWithAgent(
             final String ownerId,
             final UUID conversationId,
-            final QueryScenario scenario,
+            final AgentType requestedAgentType,
             final String question,
             final List<QuestionFileReference> files,
             final String idempotencyKey) {
-        requireConversationForUpdate(ownerId, conversationId);
+        if (files != null && !files.isEmpty()) {
+            throw new IllegalArgumentException("第一阶段不支持文件上传");
+        }
+        final String validOwner = ApplicationSupport.requireText(ownerId, "ownerId");
         final String validQuestion = validateQuestion(question);
         final String validKey = ApplicationSupport.requireText(idempotencyKey, IDEMPOTENCY_KEY);
-        final AnswerSnapshot existing = answerRepository.findByIdempotencyKey(ownerId, validKey).orElse(null);
+        final QuestionSubmissionConversationResolver.Resolution resolution =
+                submissionConversationResolver.resolve(
+                        validOwner, conversationId, validQuestion, requestedAgentType, validKey);
+        final boolean createsConversation = resolution.created();
+        final Instant now = resolution.now();
+        final Conversation conversation = resolution.conversation();
+        final QueryScenario scenario = conversation.agentType().queryScenario();
+        final AnswerSnapshot existing = answerRepository.findByIdempotencyKey(validOwner, validKey).orElse(null);
         if (existing != null) {
-            return idempotencyValidator.requireMatchingSubmission(
-                    ownerId, existing, conversationId, validQuestion, files);
+            return new QuestionSubmission(
+                    conversation,
+                    idempotencyValidator.requireMatchingSubmission(
+                            validOwner, existing, conversation.id(), validQuestion, files),
+                    createsConversation);
         }
         final List<QuestionFileReference> validFiles = questionFileCoordinator.validate(
-                ownerId, conversationId, files);
-        final List<ChatMessage> history = loadHistory(ownerId, conversationId);
+                validOwner, conversation.id(), files);
+        final List<ChatMessage> history = createsConversation
+                ? Collections.<ChatMessage>emptyList()
+                : loadHistory(validOwner, conversation.id());
         final UUID questionId = UUID.randomUUID();
-        final Instant now = Instant.now(clock);
         final UUID requestedAnswerId = UUID.randomUUID();
         final AnswerSnapshot answer = answerRepository.create(
-                ownerId,
-                conversationId,
+                validOwner,
+                conversation.id(),
                 questionId,
                 requestedAnswerId,
                 UUID.randomUUID(),
@@ -253,12 +296,15 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
                 now);
         // 唯一键并发竞争可能让仓储返回另一请求已创建的回答；此时必须核对请求指纹且禁止重复投递。
         if (!requestedAnswerId.equals(answer.id())) {
-            return idempotencyValidator.requireMatchingSubmission(
-                    ownerId, answer, conversationId, validQuestion, files);
+            return new QuestionSubmission(
+                    conversation,
+                    idempotencyValidator.requireMatchingSubmission(
+                            validOwner, answer, conversation.id(), validQuestion, files),
+                    createsConversation);
         }
         questionFileCoordinator.attach(questionId, validFiles, now);
-        startAfterCommit(ownerId, answer, validQuestion, history, scenario);
-        return answer;
+        startAfterCommit(validOwner, answer, validQuestion, history, scenario);
+        return new QuestionSubmission(conversation, answer, createsConversation);
     }
 
     /**
@@ -281,9 +327,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
             final String question,
             final List<QuestionFileReference> files,
             final String idempotencyKey) {
-        final QueryScenario scenario = Objects.requireNonNull(
-                agentType, "agentType must not be null").queryScenario();
-        return submitForScenario(ownerId, conversationId, scenario, question, files, idempotencyKey);
+        return submitWithAgent(
+                ownerId, conversationId, agentType, question, files, idempotencyKey).answer();
     }
 
     /**
@@ -301,7 +346,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
     @Transactional
     public AnswerSnapshot regenerate(final String ownerId, final UUID answerId, final String idempotencyKey) {
         final AnswerSnapshot original = getAnswer(ownerId, answerId);
-        requireConversationForUpdate(ownerId, original.conversationId());
+        final Conversation conversation = submissionConversationResolver.lockExisting(
+                ownerId, original.conversationId());
         if (original.status() == AnswerSnapshot.Status.NEEDS_CLARIFICATION) {
             throw new AnswerAlreadyTerminalException(original.status().name());
         }
@@ -330,9 +376,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
         if (!requestedAnswerId.equals(answer.id())) {
             return idempotencyValidator.requireMatchingRegeneration(answer, original);
         }
-        // 重新发起必须形成完整的新问答轮次，并继承原问题的不可变附件用途快照。
-        questionFileCoordinator.copyForRegeneration(original.questionId(), newQuestionId, now);
-        startAfterCommit(ownerId, answer, question, history, QueryScenario.DUAL_CHANNEL_QA);
+        // 第一期重新生成只复用原问题文本，不复制历史附件，避免绕过文件能力开关。
+        startAfterCommit(ownerId, answer, question, history, conversation.agentType().queryScenario());
         return answer;
     }
 
@@ -744,19 +789,6 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
     }
 
     /**
-     * 锁定会话并校验归属，防止问题提交或重生成与会话删除并发穿透。
-     *
-     * @param ownerId 用户所有者 ID。
-     * @param conversationId 会话 ID。
-     */
-    private void requireConversationForUpdate(final String ownerId, final UUID conversationId) {
-        conversationRepository.findActiveForUpdate(
-                        ApplicationSupport.requireText(ownerId, "ownerId"),
-                        Objects.requireNonNull(conversationId, "conversationId must not be null"))
-                .orElseThrow(() -> new ResourceNotFoundException("conversation not found: " + conversationId));
-    }
-
-    /**
      * 校验问题非空且未超过字符上限。
      *
      * @param question 用户问题。
@@ -817,13 +849,25 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
         }
 
         /**
-         * 持久化公司模型消息 ID 并唤醒停止任务。
+         * 持久化公司 HiAgent 应用会话 ID。
          *
-         * @param providerMessageId 公司模型侧消息 ID。
+         * @param appConversationId 公司 HiAgent 应用会话 ID。
          */
         @Override
-        public void onProviderMessageId(final String providerMessageId) {
-            cancellationRepository.recordProviderMessageId(answerId, providerMessageId, Instant.now(clock));
+        public void onAppConversationId(final String appConversationId) {
+            if (!answerRepository.recordAppConversationId(answerId, appConversationId)) {
+                throw new IllegalStateException("HiAgent app conversation id was not persisted");
+            }
+        }
+
+        /**
+         * 持久化公司模型消息 ID 并唤醒停止任务。
+         *
+         * @param messageId 公司模型侧消息 ID。
+         */
+        @Override
+        public void onMessageId(final String messageId) {
+            cancellationRepository.recordMessageId(answerId, messageId, Instant.now(clock));
             cancellationDispatcher.dispatch(answerId);
         }
     }

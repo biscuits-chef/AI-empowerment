@@ -7,6 +7,7 @@
     <resultMap id="temporaryFileResult"
             type="com.acme.intelligentqa.adapter.out.persistence.mybatis.TemporaryFilePersistenceRecord">
         <id property="id" column="id"/>
+        <result property="publicId" column="public_id"/>
         <result property="conversationId" column="conversation_id"/>
         <result property="ownerId" column="owner_id"/>
         <result property="idempotencyKey" column="idempotency_key"/>
@@ -23,13 +24,13 @@
     </resultMap>
 
     <select id="selectActive" resultMap="temporaryFileResult">
-        SELECT id, conversation_id, owner_id, idempotency_key, original_name, content_type,
+        SELECT id, public_id, conversation_id, owner_id, idempotency_key, original_name, content_type,
                size_bytes, sha256, object_key, usage_type, status, created_at, updated_at, deleted_at
         FROM qa_file
         WHERE owner_id = #{ownerId}
           AND conversation_id = #{conversationId}
           AND deleted_at IS NULL
-        ORDER BY created_at ASC, id ASC
+        ORDER BY created_at ASC, public_id ASC
         LIMIT #{limit}
     </select>
 

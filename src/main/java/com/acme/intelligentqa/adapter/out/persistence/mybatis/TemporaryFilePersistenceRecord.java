@@ -13,9 +13,12 @@ import java.time.Instant;
 @TableName("qa_file")
 public class TemporaryFilePersistenceRecord {
 
-    /** 文件唯一标识。 */
-    @TableId(type = IdType.INPUT)
-    private String id;
+    /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+    /** 对外稳定文件 UUID 标识。 */
+    @TableField("public_id")
+    private String publicId;
     /** 所属会话 ID。 */
     @TableField("conversation_id")
     private String conversationId;
@@ -54,10 +57,14 @@ public class TemporaryFilePersistenceRecord {
     @TableField("deleted_at")
     private Timestamp deletedAt;
 
-    /** @return 文件唯一标识。 */
-    public String getId() { return id; }
-    /** @param value 文件唯一标识。 */
-    public void setId(final String value) { this.id = value; }
+    /** @return 数据库内部自增主键。 */
+    public Long getId() { return id; }
+    /** @param value 数据库内部自增主键。 */
+    public void setId(final Long value) { this.id = value; }
+    /** @return 对外稳定文件 UUID 标识。 */
+    public String getPublicId() { return publicId; }
+    /** @param value 对外稳定文件 UUID 标识。 */
+    public void setPublicId(final String value) { this.publicId = value; }
     /** @return 所属会话 ID。 */
     public String getConversationId() { return conversationId; }
     /** @param value 所属会话 ID。 */

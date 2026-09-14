@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.acme.intelligentqa.common.error.AnswerAlreadyTerminalException;
 import com.acme.intelligentqa.application.service.ConversationService;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
+import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.model.ChatMessage;
 import com.acme.intelligentqa.domain.model.ClarificationRequest;
 import com.acme.intelligentqa.domain.model.Conversation;
@@ -124,6 +125,29 @@ class MybatisPlusPersistenceTest {
         assertTrue(conversations.softDelete(OWNER_ID, conversationId, NOW.plusSeconds(2)));
         assertFalse(conversations.findActive(OWNER_ID, conversationId).isPresent());
         assertTrue(conversations.listByOwner(OWNER_ID, null, null, 10).isEmpty());
+    }
+
+    /**
+     * 验证首次提问会话按用户和幂等键只创建一次。
+     */
+    @Test
+    void createsFirstQuestionConversationIdempotently() {
+        final UUID firstId = UUID.randomUUID();
+        final Conversation first = conversations.createForQuestion(
+                firstId, OWNER_ID, "首次问题", AgentType.SMART_DATA,
+                "first-question-key", NOW);
+        final Conversation replayed = conversations.createForQuestion(
+                UUID.randomUUID(), OWNER_ID, "首次问题", AgentType.SMART_DATA,
+                "first-question-key", NOW.plusSeconds(1));
+
+        assertEquals(firstId, first.id());
+        assertEquals(AgentType.SMART_DATA, first.agentType());
+        assertEquals(first.id(), replayed.id());
+        assertEquals(first.id(), conversations.findActiveByCreationKey(
+                OWNER_ID, "first-question-key").orElseThrow(AssertionError::new).id());
+        assertFalse(conversations.findActiveByCreationKey(
+                "another-user", "first-question-key").isPresent());
+        assertEquals(1, conversations.listByOwner(OWNER_ID, null, null, 10).size());
     }
 
     /**
@@ -399,6 +423,22 @@ class MybatisPlusPersistenceTest {
         assertEquals(30000, answers.find(OWNER_ID, answerId).get().content().length());
         final List<ChatMessage> messages = conversations.listMessages(OWNER_ID, conversationId, 10);
         assertEquals(30000, messages.get(messages.size() - 1).content().length());
+    }
+
+    /**
+     * 验证回答进入模型生成阶段后可以持久化 HiAgent 应用会话 ID。
+     */
+    @Test
+    void persistsHiAgentAppConversationIdOnGeneratingAnswer() {
+        final UUID conversationId = createConversation();
+        final UUID answerId = createAnswer(conversationId, "hiagent-conversation");
+
+        answers.transitionStatus(answerId, AnswerSnapshot.Status.GENERATING);
+        assertTrue(answers.recordAppConversationId(answerId, "company-conversation-1"));
+
+        assertEquals("company-conversation-1", jdbcTemplate.queryForObject(
+                "SELECT app_conversation_id FROM qa_answer WHERE public_id = ?",
+                String.class, answerId.toString()));
     }
 
     /**

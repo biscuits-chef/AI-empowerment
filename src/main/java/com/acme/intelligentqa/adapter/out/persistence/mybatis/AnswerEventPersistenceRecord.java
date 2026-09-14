@@ -14,8 +14,8 @@ import java.time.Instant;
 public class AnswerEventPersistenceRecord {
 
     /** 全局递增事件序号。 */
-    @TableId(value = "event_id", type = IdType.AUTO)
-    private Long eventId;
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     /** 回答 ID。 */
     @TableField("answer_id")
     private String answerId;
@@ -30,10 +30,10 @@ public class AnswerEventPersistenceRecord {
     private Timestamp occurredAt;
 
     /** @return 全局递增事件序号。 */
-    public Long getEventId() { return eventId; }
+    public Long getId() { return id; }
 
     /** @param value 全局递增事件序号。 */
-    public void setEventId(final Long value) { this.eventId = value; }
+    public void setId(final Long value) { this.id = value; }
 
     /** @return 回答 ID。 */
     public String getAnswerId() { return answerId; }

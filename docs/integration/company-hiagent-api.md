@@ -34,6 +34,8 @@ Conversation.AppConversationID
 
 未返回该字段视为依赖失败，不能继续聊天请求。
 
+创建成功后，系统在调用 `chat_query` 前把该值保存到当前回答的 `qa_answer.app_conversation_id`。本系统每次回答使用独立的平台会话，因此该列属于回答级外部调用元数据，不替代本系统 `qa_conversation.public_id`。
+
 ### 2. 流式聊天
 
 ```http
@@ -72,9 +74,25 @@ Content-Type: application/json
 
 字段名及大小写严格按公司文档发送。停止请求采用持久任务、有界重试和租约抢占；没有取得 `MessageID` 时不会猜测或使用本系统回答 ID 代替，而是进入明确的 `MODEL_MESSAGE_ID_UNAVAILABLE` 失败状态。
 
+## 返回字段与数据库字段映射
+
+| HiAgent 字段 | 数据库字段 | 当前写入状态 | 说明 |
+|---|---|---|---|
+| `Conversation.AppConversationID` | `qa_answer.app_conversation_id` | 已写入 | 创建平台会话成功后、聊天请求前持久化 |
+| `AnswerInfo.MessageID` / 流事件 `MessageID` | `qa_answer.message_id` | 已写入流中确认值 | 用于 `/stop_message` 和审计 |
+| `Messages.QueryID` / `MessageInfo.QueryID` | `qa_answer.query_id` | 预留 | 当前流事件路径未确认，保持 `NULL` |
+| `AnswerInfo.TaskID` | `qa_answer.task_id` | 预留 | 文档标记停止接口优先使用 `MessageID` |
+| `AnswerInfo.TotalTokens` | `qa_answer.total_tokens` | 预留 | 当前流事件路径未确认，保持 `NULL` |
+| `AnswerInfo.Latency` | `qa_answer.latency` | 预留 | 单位为秒，当前流事件路径未确认 |
+| `AnswerInfo.TracingJsonStr` | `qa_answer.tracing_json_str` | 预留 | 只保存平台原始字符串，不在日志展开 |
+| `AnswerInfo.IntentionJsonStr` | `qa_answer.intention_json_str` | 预留 | 不替代本系统可审计的结构化意图 |
+| `AnswerInfo.RetrieverResource` | `qa_answer.retriever_resource` | 预留 | 不替代本系统双通道证据记录 |
+
+`ConversationID`、`Query`、`Answer`、`CreatedTime` 和 `Like` 没有直接覆盖本系统同类字段：平台对象与本系统会话、问题、回答、创建时间及用户反馈具有不同生命周期和事实来源。嵌套的 `OtherAnswers`、`QueryExtends.Files`、`QAInfo` 和 `Inputs` 也不压平进回答表。
+
 ## 重新生成和上下文
 
-本系统的重新生成是把原问题作为新的完整问答轮次重新发起：创建新的问题和回答记录，继承原问题的不可变附件引用，重新执行意图识别、知识库检索、数据库查询和证据对账，因此不直接调用平台 `/query_again`。每次模型生成创建独立平台会话，并在 `Query` 中携带由本系统裁剪和审核的上下文，以本系统 GoldenDB 记录作为事实源。
+本系统的重新生成是把原问题作为新的完整问答轮次重新发起：创建新的问题和回答记录，仅继承原问题文本，不复制历史附件，重新执行意图识别、知识库检索、数据库查询和证据对账，因此不直接调用平台 `/query_again`。每次模型生成创建独立平台会话，并在 `Query` 中携带由本系统裁剪和审核的上下文，以本系统 GoldenDB 记录作为事实源。
 
 如果后续决定复用平台会话，必须先设计内部会话到 `AppConversationID` 的持久化映射、并发创建幂等、生命周期和删除对账，并通过新 ADR 批准。
 

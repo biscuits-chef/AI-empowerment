@@ -2,6 +2,7 @@ package com.acme.intelligentqa.domain.port.out;
 
 import com.acme.intelligentqa.domain.model.ChatMessage;
 import com.acme.intelligentqa.domain.model.Conversation;
+import com.acme.intelligentqa.domain.model.AgentType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,38 @@ public interface ConversationRepositoryPort {
      * @return 创建并持久化业务对象。
      */
     Conversation create(UUID id, String ownerId, String title, Instant now);
+
+    /**
+     * 按统一提问幂等键创建首次提问会话；重复请求返回原会话。
+     *
+     * @param id 新会话唯一标识。
+     * @param ownerId 用户所有者 ID。
+     * @param title 首次问题生成的会话名称。
+     * @param agentType 会话创建时选定且不可变更的 Agent 类型。
+     * @param idempotencyKey 首次提问幂等键。
+     * @param now 当前时间。
+     * @return 新创建或已经存在的同一幂等会话。
+     */
+    Conversation createForQuestion(
+            UUID id,
+            String ownerId,
+            String title,
+            AgentType agentType,
+            String idempotencyKey,
+            Instant now);
+
+    /**
+     * 按用户和首次提问幂等键查找未删除会话。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param idempotencyKey 首次提问幂等键。
+     * @return 匹配的未删除会话。
+     */
+    default Optional<Conversation> findActiveByCreationKey(
+            final String ownerId,
+            final String idempotencyKey) {
+        return Optional.empty();
+    }
 
     /**
      * 按所属用户查询会话列表。

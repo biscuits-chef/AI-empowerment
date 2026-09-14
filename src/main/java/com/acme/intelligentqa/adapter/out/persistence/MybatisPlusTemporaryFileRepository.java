@@ -94,7 +94,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
             final UUID fileId, final TemporaryFile.Status status, final Instant now) {
         final LambdaUpdateWrapper<TemporaryFilePersistenceRecord> update =
                 new LambdaUpdateWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getId, fileId.toString())
+                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
                         .isNull(TemporaryFilePersistenceRecord::getDeletedAt)
                         .set(TemporaryFilePersistenceRecord::getStatus, status.name())
                         .set(TemporaryFilePersistenceRecord::getUpdatedAt, Timestamp.from(now));
@@ -138,7 +138,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
             final String ownerId, final UUID conversationId, final UUID fileId) {
         final LambdaQueryWrapper<TemporaryFilePersistenceRecord> query =
                 new LambdaQueryWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getId, fileId.toString())
+                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
                         .eq(TemporaryFilePersistenceRecord::getOwnerId, ownerId)
                         .eq(TemporaryFilePersistenceRecord::getConversationId, conversationId.toString())
                         .isNull(TemporaryFilePersistenceRecord::getDeletedAt);
@@ -202,7 +202,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
         final Timestamp deletedAt = Timestamp.from(now);
         final LambdaUpdateWrapper<TemporaryFilePersistenceRecord> update =
                 new LambdaUpdateWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getId, fileId.toString())
+                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
                         .eq(TemporaryFilePersistenceRecord::getOwnerId, ownerId)
                         .eq(TemporaryFilePersistenceRecord::getConversationId, conversationId.toString())
                         .isNull(TemporaryFilePersistenceRecord::getDeletedAt)
@@ -245,7 +245,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
     private Optional<TemporaryFile> findById(final UUID fileId) {
         final LambdaQueryWrapper<TemporaryFilePersistenceRecord> query =
                 new LambdaQueryWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getId, fileId.toString())
+                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
                         .isNull(TemporaryFilePersistenceRecord::getDeletedAt);
         return Optional.ofNullable(execute(
                         () -> fileMapper.selectOne(query), "failed to read temporary file"))
@@ -262,7 +262,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
     private static TemporaryFilePersistenceRecord toRecord(
             final TemporaryFile file, final String idempotencyKey) {
         final TemporaryFilePersistenceRecord record = new TemporaryFilePersistenceRecord();
-        record.setId(file.id().toString());
+        record.setPublicId(file.id().toString());
         record.setConversationId(file.conversationId().toString());
         record.setOwnerId(file.ownerId());
         record.setIdempotencyKey(idempotencyKey);
@@ -286,7 +286,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
      */
     private static TemporaryFile toDomain(final TemporaryFilePersistenceRecord record) {
         return new TemporaryFile(
-                UUID.fromString(record.getId()),
+                UUID.fromString(record.getPublicId()),
                 UUID.fromString(record.getConversationId()),
                 record.getOwnerId(),
                 record.getOriginalName(),

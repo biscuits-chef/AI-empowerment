@@ -7,7 +7,6 @@ import com.acme.intelligentqa.domain.model.ConversationPage;
 import com.acme.intelligentqa.domain.model.MessageAttachment;
 import com.acme.intelligentqa.domain.port.in.ChatUseCase;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.net.URI;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,9 +18,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,24 +46,6 @@ public class ChatController {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected use case is retained and not exposed")
     public ChatController(final ChatUseCase chatUseCase) {
         this.chatUseCase = chatUseCase;
-    }
-
-    /**
-     * 创建并持久化业务对象。
-     *
-     * @param principal 认证用户主体。
-     *
-     * @param request 接口请求。
-     *
-     * @return 创建并持久化业务对象。
-     */
-    @PostMapping
-    public ResponseEntity<ConversationResponse> create(
-            final Principal principal,
-            @Valid @RequestBody final ConversationRequest request) {
-        final Conversation conversation = chatUseCase.create(owner(principal), request.getTitle());
-        return ResponseEntity.created(URI.create("/api/v1/chats/" + conversation.id()))
-                .body(ConversationResponse.from(conversation));
     }
 
     /**
@@ -180,7 +159,7 @@ public class ChatController {
      *
      * @return 修改当前用户的会话名称。
      */
-    @PatchMapping("/{chatId}")
+    @PostMapping("/{chatId}/rename")
     public ConversationResponse rename(
             final Principal principal,
             @PathVariable final UUID chatId,
@@ -197,7 +176,7 @@ public class ChatController {
      *
      * @return 逻辑删除当前用户的会话。
      */
-    @DeleteMapping("/{chatId}")
+    @PostMapping("/{chatId}/deletion")
     public ResponseEntity<Void> delete(final Principal principal, @PathVariable final UUID chatId) {
         chatUseCase.delete(owner(principal), chatId);
         return ResponseEntity.noContent().build();

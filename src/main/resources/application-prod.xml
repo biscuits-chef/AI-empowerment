@@ -5,6 +5,7 @@
     <entry key="spring.datasource.url">${PROD_DB_URL}</entry>
     <entry key="spring.datasource.username">${PROD_DB_USERNAME}</entry>
     <entry key="spring.datasource.password">${PROD_DB_PASSWORD}</entry>
+    <entry key="spring.flyway.target">${PROD_FLYWAY_TARGET}</entry>
     <entry key="spring.redis.host">${PROD_REDIS_HOST}</entry>
     <entry key="spring.redis.port">${PROD_REDIS_PORT:6379}</entry>
     <entry key="spring.redis.password">${PROD_REDIS_PASSWORD}</entry>

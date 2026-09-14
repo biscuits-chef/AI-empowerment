@@ -60,6 +60,7 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("${PROD_DB_URL}", source.getProperty("spring.datasource.url"));
         assertEquals("${PROD_DB_USERNAME}", source.getProperty("spring.datasource.username"));
         assertEquals("${PROD_DB_PASSWORD}", source.getProperty("spring.datasource.password"));
+        assertEquals("${PROD_FLYWAY_TARGET}", source.getProperty("spring.flyway.target"));
         assertEquals("false", source.getProperty("app.qa.demo-mode"));
     }
 

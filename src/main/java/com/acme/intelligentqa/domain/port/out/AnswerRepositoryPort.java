@@ -90,6 +90,17 @@ public interface AnswerRepositoryPort {
     boolean transitionStatus(UUID answerId, AnswerSnapshot.Status status);
 
     /**
+     * 保存公司 HiAgent 创建会话接口返回的应用会话 ID。
+     *
+     * @param answerId 回答 ID。
+     *
+     * @param appConversationId 公司 HiAgent 应用会话 ID。
+     *
+     * @return 条件成立且写入成功时返回 true，否则返回 false。
+     */
+    boolean recordAppConversationId(UUID answerId, String appConversationId);
+
+    /**
      * 保存已生成的部分回答文本。
      *
      * @param answerId 回答 ID。

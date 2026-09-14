@@ -11,11 +11,14 @@ import java.time.Instant;
 @TableName("qa_message")
 public class ChatMessagePersistenceRecord {
 
+    /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     /**
-     * 唯一标识。
+     * 对外稳定 UUID 标识。
      */
-    @TableId(type = IdType.INPUT)
-    private String id;
+    @TableField("public_id")
+    private String publicId;
     /**
      * 会话 ID。
      */
@@ -45,18 +48,22 @@ public class ChatMessagePersistenceRecord {
     @TableField("created_at")
     private Timestamp createdAt;
 
+    /** @return 数据库内部自增主键。 */
+    public Long getId() { return id; }
+    /** @param value 数据库内部自增主键。 */
+    public void setId(final Long value) { this.id = value; }
     /**
-     * 返回唯一标识。
+     * 返回对外稳定 UUID 标识。
      *
-     * @return 唯一标识。
+     * @return 对外稳定 UUID 标识。
      */
-    public String getId() { return id; }
+    public String getPublicId() { return publicId; }
     /**
-     * 设置唯一标识。
+     * 设置对外稳定 UUID 标识。
      *
-     * @param id 唯一标识。
+     * @param value 对外稳定 UUID 标识。
      */
-    public void setId(final String id) { this.id = id; }
+    public void setPublicId(final String value) { this.publicId = value; }
     /**
      * 返回会话 ID。
      *

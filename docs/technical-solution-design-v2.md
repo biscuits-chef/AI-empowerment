@@ -1,20 +1,22 @@
-# AI 赋能项目一期技术方案设计说明书 V2.1
+# AI 赋能项目一期技术方案设计说明书 V2.2
 
 | 文档属性 | 内容 |
 |---|---|
 | 技术代号 | `intelligent-qa-audit-service` / `intelligent-qa-web` |
 | 产品名称 | 智浦小鹿工作台 |
 | 正式服务名称 | 待确认 |
-| 文档版本 | V2.1 |
-| 文档日期 | 2026-09-03 |
+| 文档版本 | V2.2 |
+| 文档日期 | 2026-09-14 |
 | 文档状态 | 一期技术评审稿 |
 | 适用范围 | 智能问数、统一工作台和一期生产基础能力 |
 
 > 本文以产品需求文档、后续确认结论、当前前后端工程和已接受 ADR 为依据。文中严格区分“目标方案”“当前已实现”和“生产待办”。未确认的公司接口、权限口径、生产地址、密钥和业务阈值均标记为 TBD，不得由代码或大模型自行假设。
 
+> 2026-09-14 范围变更：一期不支持文件上传。文件上传、附件问答、Excel 文件输入、OBS、文件安全扫描和 OCR 全部顺延到后续阶段；本文涉及这些能力的章节仅保留为后续设计，不构成一期接口或验收范围。
+
 ## 1. 执行摘要
 
-一期面向公司内部用户交付“智浦小鹿工作台”的智能问数能力。用户以自然语言或临时附件提出问题，系统完成问题理解，在权限范围内分别查询公司知识库和 GoldenDB 业务数据，对两个通道的结果进行确定性核验，再把经过筛选的证据交给公司 HiAgent 组织答案。
+一期面向公司内部用户交付“智浦小鹿工作台”的智能问数能力。用户以自然语言提出问题，系统完成问题理解，在权限范围内分别查询公司知识库和 GoldenDB 业务数据，对两个通道的结果进行确定性核验，再把经过筛选的证据交给公司 HiAgent 组织答案。
 
 一期采用前后端分离、后端单体、内部六边形架构。问答流程使用“版本化场景计划 + 类型化上下文 + 可复用节点 + 轻量执行器”，不是把场景判断散落到每个节点，也不引入开放式 Agent 框架。当前只开放：
 
@@ -39,9 +41,8 @@
 | 企业知识管理 | 由公司知识库平台负责，本系统只调用检索接口 |
 | 业务数据 | 数据中台同步到 GoldenDB，本系统查询批准的只读语义视图 |
 | SQL 安全 | 禁止模型生成并直接执行任意 SQL |
-| 临时文件 | 一期支持，既可作为查询输入，也可作为回答证据 |
-| OCR | 一期支持扫描 PDF 和图片 OCR |
-| OBS | 私有 OBS；允许 HiAgent 读取单对象短期只读 URL |
+| 临时文件 | 一期不支持，前端隐藏入口且后端不注册文件 API |
+| OCR 与 OBS | 顺延到后续阶段，不阻塞一期上线 |
 | 大模型 | 按公司 HiAgent 运行态 API 调用 |
 | 冲突处理 | 展示全部来源值和时间，提示人工复核，不由模型裁决 |
 | 后端运行时 | Java 8、Spring Boot 2.7.18、内嵌 Jetty、Maven |
@@ -60,9 +61,7 @@
 5. 产品最新信息问答：最新说明书、费率调整公告、备案通知书及关键要素。
 6. 意图识别、实体提取、指代消解、歧义处理、缺参追问和上下文恢复。
 7. 公司知识库与 GoldenDB 双通道查询、证据标准化、冲突识别和人工复核提示。
-8. PDF、DOCX、XLSX、TXT、MD、JPG、JPEG、PNG 临时附件，单文件不超过 1 MiB。
-9. 扫描 PDF/图片 OCR、Excel 查询参数提取和文件证据处理的目标链路。
-10. 停止生成、部分答案保留、反馈、重新生成和刷新恢复。
+8. 停止生成、部分答案保留、反馈、重新生成和刷新恢复。
 
 ### 3.2 一期不包含
 
@@ -72,6 +71,7 @@
 - 任意自然语言取数、自由 Schema 探索、动态跨表 Join 和任意 SQL 执行。
 - 开放式 ReAct 循环、多 Agent 自主协作或无人监管的高风险业务决策。
 - 自建登录页、完整用户管理后台和正式知识管理后台。
+- 文件上传、附件问答、Excel 文件输入、OBS、文件安全扫描和 OCR。
 
 ## 4. 质量目标
 
@@ -148,8 +148,8 @@ infrastructure  HTTP、SSE 和 XML 运行配置适配器
 ### 7.1 统一工作台
 
 - 品牌为“智浦小鹿”，页面名称为“智浦小鹿工作台”。
-- Agent 只在输入区选择，默认且仅开放“智能问数”。
-- 附件按钮位于输入区工具栏最左侧，不显示冗余文字。
+- Agent 只在新建会话首次提问前的输入区选择，默认且仅开放“智能问数”；进入已有会话后选择器隐藏且类型不可修改。
+- 一期输入区不显示附件按钮，也不响应文件拖拽。
 - 未开放 Agent 不创建会话、不提交问题，只提示“该功能尚未开放”。
 - 助手回答分为执行过程、执行结果、来源与产物三个区域。
 - 模型文本使用受控 Markdown 解析，不执行原始 HTML。
@@ -159,7 +159,6 @@ infrastructure  HTTP、SSE 和 XML 运行配置适配器
 - 后端提供不透明稳定游标，前端按页去重并虚拟化渲染。
 - 按浏览器本地自然日分为“今天、昨天、更早”。
 - 默认标题取首次有效提问去除首尾空白后的前 100 个字符。
-- 如果附件先创建了“新聊天”占位，首次提问时更新为上述默认标题。
 - 人工修改后的名称不被后续问题覆盖。
 - 会话图标和操作图标固定尺寸，不随标题长度压缩。
 - 长标题默认单行省略；悬停 0.7 秒后，以约 30 像素/秒匀速向左滚动；开启减少动画时即时展示。
@@ -167,8 +166,8 @@ infrastructure  HTTP、SSE 和 XML 运行配置适配器
 
 ### 7.3 前端恢复原则
 
-- 提交成功后的用户消息和附件立即展示，但以服务端持久化结果为最终事实。
-- 刷新后从历史消息恢复附件、执行事件、引用、人工复核提示和回答状态。
+- 提交成功后的用户消息立即展示，但以服务端持久化结果为最终事实。
+- 刷新后从历史消息恢复执行事件、引用、人工复核提示和回答状态。
 - SSE 中断但未收到终态时先读取回答快照，再决定重连。
 - 发生事件重放缺口时丢弃不可信的本地拼接，回退 GoldenDB 快照。
 - 页面渲染异常由错误边界显示恢复入口，不允许直接白屏。
@@ -186,36 +185,35 @@ infrastructure  HTTP、SSE 和 XML 运行配置适配器
 
 | 功能 | 前端主要动作 | 后端接口 | 当前状态 |
 |---|---|---|---|
-| 创建对话 | 进入本地草稿，首次提问或首次上传附件时落库 | `POST /api/v1/chats` | 已实现 |
+| 创建对话 | 进入本地草稿，首次有效提问时与问题、回答原子落库 | `POST /api/v1/questions/submission`，Body 中 `chatId=null` | 已实现 |
 | 搜索对话 | 输入防抖、重置游标、按页展示 | `GET /api/v1/chats?keyword=&cursor=&limit=` | 分页已实现；后端关键词过滤待补 |
-| 重命名对话 | 弹窗校验，成功后更新列表与顶部标题 | `PATCH /api/v1/chats/{chatId}` | 已实现 |
-| 删除对话 | 二次确认，活动回答时禁止删除 | `DELETE /api/v1/chats/{chatId}` | 已实现 |
+| 重命名对话 | 弹窗校验，成功后更新列表与顶部标题 | `POST /api/v1/chats/{chatId}/rename` | 已实现 |
+| 删除对话 | 二次确认，活动回答时禁止删除 | `POST /api/v1/chats/{chatId}/deletion` | 已实现 |
 | 打开历史会话 | 加载会话、消息、附件、执行事件与回答快照 | `GET /api/v1/chats/{chatId}`、`GET /api/v1/chats/{chatId}/messages`、`GET /api/v1/answers/{answerId}` | 已实现有界恢复 |
 
 #### 7.4.2 后端 API 汇总
 
 | 方法名 | URL | method | 入参 | 出参 |
 |---|---|---|---|---|
-| `createConversation` 创建会话 | `/api/v1/chats` | `POST` | Body：`title`，必填，去除首尾空白后 1～100 字符；用户身份从认证上下文获取 | `201 Created`；Header：`Location`；Body：`Conversation {id, title, createdAt, updatedAt}` |
+| `submitQuestion` 首次提问并创建会话 | `/api/v1/questions/submission` | `POST` | Header：`Idempotency-Key` 必填；Body：`chatId=null`、`agentType=SMART_DATA`、`question` 1～4000 字符；用户身份从认证上下文获取。Agent 类型随会话持久化 | `202 Accepted`；Header：`Location` 为回答事件流地址；Body：`QuestionSubmission {conversation, conversationCreated=true, answer}` |
 | `listConversations` 分页查询/搜索会话 | `/api/v1/chats` | `GET` | Query：`keyword` 可选、最长 100 字符，仅搜索标题；`cursor` 可选、不透明游标；`limit` 可选、默认 50、范围 1～100。当前代码尚未实现 `keyword` | `200 OK`；`ConversationPage {items, nextCursor, hasMore}` |
 | `getConversation` 查询会话详情 | `/api/v1/chats/{chatId}` | `GET` | Path：`chatId`，当前用户可访问的会话 UUID | `200 OK`；`Conversation {id, title, createdAt, updatedAt}` |
 | `listConversationMessages` 查询历史消息 | `/api/v1/chats/{chatId}/messages` | `GET` | Path：`chatId`；Query：`limit` 可选、默认 100、范围 1～100 | `200 OK`；按时间正序的 `Message[]`，包含附件、回答状态、执行事件和引用产物 |
 | `getAnswerSnapshot` 查询回答快照 | `/api/v1/answers/{answerId}` | `GET` | Path：`answerId`，当前用户可访问的回答 UUID | `200 OK`；`Answer {answerId, questionId, traceId, status, content, errorCode, cancelReason, cancelledStage, cancelErrorCode, streamPath, createdAt, completedAt, cancelRequestedAt, cancelledAt}` |
 | `subscribeAnswerEvents` 恢复回答事件流 | `/api/v1/answers/{answerId}/events` | `GET` | Path：`answerId`；Header：`Accept: text/event-stream`；`Last-Event-ID` 可选 | `200 OK`；SSE 事件流，每条包含 `id`、`event`、`data.value` 和 `data.occurredAt`；重放缺口返回 `409` |
-| `renameConversation` 重命名会话 | `/api/v1/chats/{chatId}` | `PATCH` | Path：`chatId`；Body：`title`，必填，去除首尾空白后 1～100 字符 | `200 OK`；更新后的 `Conversation {id, title, createdAt, updatedAt}` |
-| `deleteConversation` 删除会话 | `/api/v1/chats/{chatId}` | `DELETE` | Path：`chatId`；无 Body | `204 No Content`；执行中返回 `409`，提示“会话正在执行，请停止后删除” |
+| `renameConversation` 重命名会话 | `/api/v1/chats/{chatId}/rename` | `POST` | Path：`chatId`；Body：`title`，必填，去除首尾空白后 1～100 字符 | `200 OK`；更新后的 `Conversation {id, title, createdAt, updatedAt}` |
+| `deleteConversation` 删除会话 | `/api/v1/chats/{chatId}/deletion` | `POST` | Path：`chatId`；无 Body | `204 No Content`；执行中返回 `409`，提示“会话正在执行，请停止后删除” |
 
 所有接口都要求有效认证身份；开发环境可通过显式开关启用模拟用户。`404` 统一表示当前用户下资源不存在、已删除或不可访问，不得据此探测其他用户数据。
 
 #### 7.4.3 创建对话
 
 1. 用户点击“新建会话”时，前端只清空当前选择并进入本地草稿状态，不立即调用后端。
-2. 用户首次发送问题时，前端将问题去除首尾空白并截取前 100 个字符作为默认标题，调用 `POST /api/v1/chats`。
-3. 创建成功后，前端使用返回的 `chatId` 调用 `POST /api/v1/chats/{chatId}/questions`，问题与回答任务由后端持久化。
-4. 如果用户先上传附件，由于附件必须归属于确定会话，前端先以“新聊天”调用创建接口，再上传附件；首次提问时通过重命名接口替换为问题标题。这是“首次提问落库”的附件场景例外。
-5. 创建成功但问题提交失败时保留已创建会话、附件和用户输入，允许用户重试；不得再次静默创建重复会话。
-
-当前创建接口未接收 `Idempotency-Key`。一期生产冻结前应在前端提交期间禁用重复点击，并评估为创建接口增加幂等键，防止网络重试产生重复空会话。
+2. 用户首次发送问题时，前端生成 `Idempotency-Key`，调用 `POST /api/v1/questions/submission`，并传入 `chatId=null`、`agentType` 和原始问题；后端把 Agent 类型固化到会话。后续提问只传已有 `chatId` 和问题，不再传类型。
+3. 后端在同一事务中创建或复用会话、持久化问题与回答；会话标题由后端将首问去除首尾空白后按 Unicode 码点安全截取前 100 个字符生成。
+4. 事务提交后才启动异步问答编排。响应中的 `conversationCreated=true` 表示本次采用首次提问语义，前端据此将返回会话加入列表并订阅 `answer.streamPath`。
+5. 相同用户、相同幂等键和相同请求返回原会话与原回答；相同键对应不同问题、Agent 或会话形态时返回 `409 IDEMPOTENCY_CONFLICT`。数据库通过 `owner_id + creation_idempotency_key` 唯一约束防止并发重试产生重复空会话。
+6. 第一阶段不支持附件，因此不存在“先为附件创建空会话”的例外。失败时前端保留用户输入，重试必须复用原幂等键。
 
 #### 7.4.4 搜索对话
 
@@ -231,7 +229,7 @@ infrastructure  HTTP、SSE 和 XML 运行配置适配器
 #### 7.4.5 重命名对话
 
 1. 用户打开重命名弹窗时回显当前标题；点击遮罩、取消按钮或按 `Esc` 关闭弹窗且不提交。
-2. 前端校验去除首尾空白后为 1～100 个字符，再调用 `PATCH /api/v1/chats/{chatId}`。
+2. 前端校验去除首尾空白后为 1～100 个字符，再调用 `POST /api/v1/chats/{chatId}/rename`。
 3. 后端再次校验标题，并以 `ownerId + chatId + deletedAt IS NULL` 作为更新条件，避免修改其他用户或已删除会话。
 4. 成功后，前端同步更新左侧列表与顶部静态标题；失败时保留用户输入并展示安全错误信息。
 5. 当前采用最后写入者生效，不提供版本号或 `If-Match`；若后续出现多端同时编辑需求，再增加乐观锁版本。
@@ -258,12 +256,12 @@ infrastructure  HTTP、SSE 和 XML 运行配置适配器
 
 | 方法名 | URL | method | 入参 | 出参 |
 |---|---|---|---|---|
-| `submitQuestion` 提交问题 | `/api/v1/chats/{chatId}/questions` | `POST` | Path：`chatId`；Header：`Idempotency-Key` 必填；Body：`agentType` 必填，一期仅 `SMART_DATA`；`question` 必填、1～4000 字符；`files` 可选、最多 5 个，每项包含 `fileId` 和 `usage`，`usage` 为 `AUTO`、`QUERY_INPUT` 或 `EVIDENCE` | `202 Accepted`；Header：`Location` 为回答事件流地址；Body：`Answer {answerId, questionId, traceId, regeneratedFromAnswerId, status, content, errorCode, cancelReason, cancelledStage, cancelErrorCode, streamPath, createdAt, completedAt, cancelRequestedAt, cancelledAt}` |
+| `submitQuestion` 统一提交问题 | `/api/v1/questions/submission` | `POST` | Header：`Idempotency-Key` 必填；Body：`chatId` 可空，空表示首次提问并创建会话，此时 `agentType` 必填且一期仅 `SMART_DATA`；`chatId` 非空表示已有会话，此时省略 `agentType` 并由后端从会话读取；`question` 必填、1～4000 字符。一期不得发送非空 `files` | `202 Accepted`；Header：`Location` 为回答事件流地址；Body：`QuestionSubmission {conversation: Conversation, conversationCreated: boolean, answer: Answer}` |
 | `getAnswerSnapshot` 查询回答快照 | `/api/v1/answers/{answerId}` | `GET` | Path：`answerId`，当前用户可访问的回答 UUID | `200 OK`；Body：完整 `Answer` 快照，`content` 为已经持久化的完整或部分回答 |
 | `subscribeAnswerEvents` 订阅回答流 | `/api/v1/answers/{answerId}/events` | `GET` | Path：`answerId`；Header：`Accept: text/event-stream`；`Last-Event-ID` 可选，首次默认为 `0`，重连时传最后完整处理的事件序号 | `200 OK`；SSE 事件流，每条包含 `id`、`event`、`data.value`、`data.occurredAt`；事件包括阶段、增量文本、引用、人工复核、完成、取消和错误 |
 | `cancelAnswer` 停止生成回答 | `/api/v1/answers/{answerId}/cancellation` | `POST` | Path：`answerId`；Header：`Idempotency-Key` 必填；Body：`reason` 必填，一期固定为 `USER_REQUESTED` | 正在停止时返回 `202 Accepted` 和 `Answer`；已经进入终态时返回 `200 OK` 和当前 `Answer`；不存在返回 `404`；终态冲突返回 `409` |
-| `regenerateAnswer` 重新生成回答 | `/api/v1/answers/{answerId}/regenerations` | `POST` | Path：原 `answerId`；Header：`Idempotency-Key` 必填；无 Body。后端读取原问题、Agent 和附件快照，创建新的完整问答轮次 | `202 Accepted`；Header：`Location` 为新回答事件流地址；Body：新的 `Answer`，其中 `regeneratedFromAnswerId` 指向原回答 |
-| `recordAnswerFeedback` 提交喜欢/不喜欢 | `/api/v1/answers/{answerId}/feedback` | `PUT` | Path：`answerId`；Body：`feedback` 必填，可取 `LIKE` 或 `DISLIKE` | `204 No Content`；重复提交按最后一次评价更新 |
+| `regenerateAnswer` 重新生成回答 | `/api/v1/answers/{answerId}/regenerations` | `POST` | Path：原 `answerId`；Header：`Idempotency-Key` 必填；无 Body。后端读取原问题文本并创建新的完整问答轮次，不复制历史附件 | `202 Accepted`；Header：`Location` 为新回答事件流地址；Body：新的 `Answer`，其中 `regeneratedFromAnswerId` 指向原回答 |
+| `recordAnswerFeedback` 提交喜欢/不喜欢 | `/api/v1/answers/{answerId}/feedback` | `POST` | Path：`answerId`；Body：`feedback` 必填，可取 `LIKE` 或 `DISLIKE` | `204 No Content`；重复提交按最后一次评价更新 |
 
 复制回答不提供后端 API：前端直接将当前已展示并持久化的回答文本写入浏览器剪贴板，并根据成功或失败显示交互提示。
 
@@ -292,9 +290,8 @@ config                     XML 配置绑定和依赖装配
 ### 9.1 路由
 
 ```text
-请求 agentType=SMART_DATA
-        ↓
-AgentType 白名单校验
+首问：agentType=SMART_DATA ─> 白名单校验并固化到会话
+后续：chatId ─────────────> 锁定会话并读取固定 Agent 类型
         ↓
 QueryScenario=DUAL_CHANNEL_QA
         ↓
@@ -340,7 +337,7 @@ sequenceDiagram
     participant B as 业务 GoldenDB
     participant H as HiAgent
 
-    U->>F: 提问 + 可选附件 + SMART_DATA
+    U->>F: 首次提问选择 SMART_DATA；后续直接提问
     F->>Q: POST question + Idempotency-Key
     Q->>D: 保存问题、回答占位、附件关系
     Q-->>F: answerId + traceId + eventsUrl
@@ -431,13 +428,17 @@ GoldenDB 产品主题快照表
 
 Flyway 创建产品空表和索引，数据中台负责同步业务快照。产品表的数据权限、完整快照发布、数据量和索引由数据平台与 DBA 签署。
 
+所有数据表的唯一物理主键统一为 `id BIGINT AUTO_INCREMENT`，禁止 `pk_id`、UUID 和复合业务主键。资源表的 UUID 映射为 `public_id UNIQUE` 并继续承担外部寻址；数据库自增值只留在持久化适配器，不进入 REST、SSE、上下文、OBS 或幂等契约。
+
 ## 13. 公司知识库方案
 
 公司知识库平台负责上传、维护、解析、切片和索引。本系统只传入规范化问题、实体、知识权限和结果上限，并接收可追溯片段。
 
 知识片段至少需要：稳定片段 ID、文档 ID、标题、版本、发布/生效时间、页码或章节、相关度、权限标签和检索时间。认证、分页、限流、超时、错误码和“最新文档”语义仍待平台确认。
 
-## 14. 临时文件、OBS 与 OCR
+## 14. 后续阶段临时文件、OBS 与 OCR
+
+本章不属于一期建设、接口和验收范围。已有文件代码与表结构仅作为后续扩展储备，所有环境默认关闭 `app.file.upload-enabled`，一期问题接口拒绝非空文件引用。
 
 ### 14.1 文件角色
 
@@ -469,16 +470,16 @@ READY | FAILED | QUARANTINED
 
 文件只有 `READY` 才能随问题提交。OBS 对象键由服务端生成；短期签名 URL 不返回前端、不写入答案、不完整记录日志。数据库与 OBS 不使用分布式事务，通过状态机、幂等和补偿任务处理孤儿对象。
 
-### 14.3 上传先于提问
+### 14.3 后续阶段上传先于提问
 
-目标要求空白草稿不产生可见历史会话，但现有上传 API 必须携带 `chatId`。目标方案采用隐藏的 `DRAFT` 会话：
+后续目标要求空白草稿不产生可见历史会话，但文件 API 必须携带 `chatId`。后续方案可采用隐藏的 `DRAFT` 会话：
 
 1. 首次上传附件时创建 `DRAFT` 会话，不进入普通历史列表。
 2. 首次有效提问在同一事务中把会话转为 `ACTIVE`，标题取首问前 100 个字符。
 3. 用户人工改名后不再自动覆盖。
 4. 长时间未提问的 DRAFT 会话和孤立附件由有界清理任务处理。
 
-当前代码仍使用可见“新聊天”占位并在首问时改名，尚需数据模型和列表查询收口，因此不能宣称完全满足“首问才落库”。
+一期不启用上传，因此不会产生附件先于首问创建会话的问题。
 
 ## 15. 统一证据与冲突处理
 
@@ -517,7 +518,7 @@ POST /stop_message         -> 停止指定 MessageID
 
 每次回答创建独立平台会话。本系统长期上下文仍以 GoldenDB 为准。发送给 HiAgent 的 Query 只包含系统规则、已确认意图、有界上下文、经权限校验的证据、冲突标识和输出格式约束。
 
-重新生成不调用平台“再次生成”捷径，而是创建新的问题和回答，复制原问题及固化附件用途，重新执行完整查询和核验。原问题与原回答永久保留。
+重新生成不调用平台“再次生成”捷径，而是创建新的问题和回答，只复制原问题文本，重新执行完整查询和核验。历史附件不进入新问题；原问题与原回答永久保留。
 
 真实认证头、必填 Inputs、文件对象结构、流事件、结束/错误事件和 MessageID 层级必须用脱敏样例完成契约测试后才能启用生产适配器。
 
@@ -538,7 +539,7 @@ POST /stop_message         -> 停止指定 MessageID
 | 后端基础路径 | `/api/v1` |
 | 传输 | 生产必须使用 HTTPS；JSON 使用 UTF-8 |
 | 时间 | ISO 8601 UTC，例如 `2026-09-03T08:30:00Z` |
-| ID | 本系统资源使用 UUID 字符串；游标是不透明字符串，只能原样回传 |
+| ID | API 资源 ID 使用 UUID 字符串并映射到数据库 `public_id`；物理 `id BIGINT AUTO_INCREMENT` 不对外暴露，游标是不透明字符串，只能原样回传 |
 | 认证 | 正式环境由公司统一认证建立可信身份；开发环境可通过开关启用模拟用户 |
 | Owner 隔离 | `ownerId` 只从认证主体取得，前端请求体不得传入或覆盖 |
 | Agent | 不提供 `/api/v1/agents`；前端本地维护列表，提交问题时传稳定枚举 `agentType` |
@@ -620,7 +621,7 @@ POST /stop_message         -> 停止指定 MessageID
   "answerId": null,
   "answerStatus": null,
   "role": "USER",
-  "content": "查询附件内产品的基本信息",
+  "content": "查询悦享一号产品的基本信息",
   "createdAt": "2026-09-03T08:31:00Z",
   "attachments": [
     {
@@ -637,7 +638,7 @@ POST /stop_message         -> 停止指定 MessageID
 }
 ```
 
-`role` 为 `USER` 或 `ASSISTANT`。助手消息通过 `answerId`、`answerStatus`、执行事件和引用产物恢复页面状态。`artifacts` 当前结构为 `{"type":"CITATION","reference":"稳定引用"}`。
+`role` 为 `USER` 或 `ASSISTANT`。助手消息通过 `answerId`、`answerStatus`、执行事件和引用产物恢复页面状态。示例中的 `attachments` 仅说明开发期旧数据兼容读取，一期不会产生新附件。`artifacts` 当前结构为 `{"type":"CITATION","reference":"稳定引用"}`。
 
 #### 17.2.5 统一错误 `ApiProblem`
 
@@ -676,23 +677,21 @@ POST /stop_message         -> 停止指定 MessageID
 | 编号 | 接口名 | 方法与路径 | 状态 |
 |---|---|---|---|
 | FE-01 | 获取当前用户 | `GET /api/v1/me` | 目标 |
-| FE-02 | 创建会话 | `POST /api/v1/chats` | 已实现 |
+| FE-02 | 首次提问并创建会话 | `POST /api/v1/questions/submission`，`chatId=null` | 已实现 |
 | FE-03 | 分页查询/搜索会话 | `GET /api/v1/chats` | 分页已实现，服务端关键词搜索待补 |
 | FE-04 | 查询会话详情 | `GET /api/v1/chats/{chatId}` | 已实现 |
 | FE-05 | 查询会话消息并恢复执行状态 | `GET /api/v1/chats/{chatId}/messages` | 已实现有界恢复，消息游标待补 |
-| FE-06 | 修改会话名称 | `PATCH /api/v1/chats/{chatId}` | 已实现 |
-| FE-07 | 删除会话 | `DELETE /api/v1/chats/{chatId}` | 已实现 |
-| FE-08 | 上传临时文件 | `POST /api/v1/chats/{chatId}/files` | 已实现基础链路 |
-| FE-09 | 查询临时文件 | `GET /api/v1/chats/{chatId}/files` | 已实现 |
-| FE-10 | 删除临时文件 | `DELETE /api/v1/chats/{chatId}/files/{fileId}` | 已实现 |
-| FE-11 | 提交问题 | `POST /api/v1/chats/{chatId}/questions` | 已实现 |
+| FE-06 | 修改会话名称 | `POST /api/v1/chats/{chatId}/rename` | 已实现 |
+| FE-07 | 删除会话 | `POST /api/v1/chats/{chatId}/deletion` | 已实现 |
+| FE-08～10 | 临时文件接口 | 不注册 | 顺延到后续阶段 |
+| FE-11 | 向已有会话提交问题 | `POST /api/v1/questions/submission`，`chatId` 非空 | 已实现 |
 | FE-12 | 查询回答快照 | `GET /api/v1/answers/{answerId}` | 已实现 |
 | FE-13 | 订阅回答事件 | `GET /api/v1/answers/{answerId}/events` | 已实现单实例实时通知 |
 | FE-14 | 停止回答 | `POST /api/v1/answers/{answerId}/cancellation` | 已实现 |
 | FE-15 | 重新生成 | `POST /api/v1/answers/{answerId}/regenerations` | 已实现 |
-| FE-16 | 提交回答评价 | `PUT /api/v1/answers/{answerId}/feedback` | 已实现 |
+| FE-16 | 提交回答评价 | `POST /api/v1/answers/{answerId}/feedback` | 已实现 |
 
-不提供复制回答接口，复制由浏览器完成。不提供 Agent 列表接口，后端仍须校验 `agentType` 白名单、开放状态和权限。
+不提供复制回答接口，复制由浏览器完成。不提供 Agent 列表接口；后端校验首问 `agentType` 的白名单、开放状态和权限，将其固化到会话，并在后续提问中拒绝类型切换。
 
 ### 17.4 前端调用后端接口明细
 
@@ -716,12 +715,13 @@ POST /stop_message         -> 停止指定 MessageID
 
 `userId`、部门和权限声明的真实来源与字段映射由身份平台签署。当前代码尚无此 Controller，属于一期目标接口。
 
-#### FE-02 创建会话
+#### FE-02 首次提问并创建会话
 
-- 请求：`POST /api/v1/chats`。
-- Body：`{"title":"查询悦享一号产品信息"}`；`title` 必填、去除首尾空白后 1～100 字符。
-- 成功：`201 Created`，Header `Location: /api/v1/chats/{chatId}`，Body 为 `Conversation`。
-- 主要错误：`400 INVALID_REQUEST`、`401 AUTHENTICATION_REQUIRED`。
+- 请求：`POST /api/v1/questions/submission`，Header `Idempotency-Key` 必填。
+- Body：`{"chatId":null,"agentType":"SMART_DATA","question":"查询悦享一号产品信息"}`。
+- 成功：`202 Accepted`，Header `Location: /api/v1/answers/{answerId}/events`，Body 为 `QuestionSubmission`；`conversationCreated=true`。
+- 语义：会话、问题和回答在同一事务中创建；会话标题由后端使用首问前 100 个 Unicode 字符生成。点击“新建会话”本身不调用后端。
+- 主要错误：`400 INVALID_REQUEST`、`401 AUTHENTICATION_REQUIRED`、`409 IDEMPOTENCY_CONFLICT`。
 
 #### FE-03 分页查询/搜索会话
 
@@ -769,74 +769,44 @@ POST /stop_message         -> 停止指定 MessageID
 
 #### FE-06 修改会话名称
 
-- 请求：`PATCH /api/v1/chats/{chatId}`。
+- 请求：`POST /api/v1/chats/{chatId}/rename`。
 - Body：`{"title":"新的会话名称"}`；约束同创建会话。
 - 成功：`200 OK`，Body 为更新后的 `Conversation`。
 - 主要错误：`400`、`401`、`404`。
 
 #### FE-07 删除会话
 
-- 请求：`DELETE /api/v1/chats/{chatId}`；无 Body。
+- 请求：`POST /api/v1/chats/{chatId}/deletion`；无 Body。
 - 成功：`204 No Content`。
 - 活动回答：`409 CONVERSATION_ACTIVE`，`detail` 固定为“会话正在执行，请停止后删除”。前端只提示，不自动替用户停止。
 - 安全：逻辑删除只能作用于当前 Owner；不可访问资源统一按 `404` 处理。
 
-#### FE-08 上传临时文件
+#### FE-08～10 临时文件接口（后续阶段）
 
-- 请求：`POST /api/v1/chats/{chatId}/files`。
-- Header：`Idempotency-Key: {1..128字符}`。
-- Content-Type：`multipart/form-data`。
-- Form 入参：`file` 必填二进制；`usage` 可选，默认 `AUTO`，可取 `AUTO|QUERY_INPUT|EVIDENCE`。
-- 约束：单文件不超过 1 MiB；允许 PDF、DOCX、XLSX、TXT、MD、JPG、JPEG、PNG；扩展名、MIME 和文件头必须联合校验。
-- 成功：`201 Created`，Body 为 `TemporaryFile`。
-- 主要错误：`409 FILE_NOT_READY/IDEMPOTENCY_CONFLICT`、`413 FILE_TOO_LARGE`、`415 UNSUPPORTED_FILE_TYPE`、`503 DEPENDENCY_UNAVAILABLE`。
-
-基础代码已支持上传与元数据；真实 OBS、安全扫描、解析和 OCR 完成前，测试/生产不能把文件直接标记为 `READY`。
-
-#### FE-09 查询临时文件
-
-- 请求：`GET /api/v1/chats/{chatId}/files`；无 Query 或 Body。
-- 成功：`200 OK`，Body 为当前会话未删除的 `TemporaryFile[]`。
-- 安全：响应不包含文件正文、对象键、存储路径或签名 URL。
-
-#### FE-10 删除临时文件
-
-- 请求：`DELETE /api/v1/chats/{chatId}/files/{fileId}`；无 Body。
-- 成功：`204 No Content`。目标契约要求重复删除也按成功处理；当前代码首次删除后再次调用可能返回 `404`，生产冻结前需统一语义。
-- 已被问题引用：保留历史消息中的安全元数据，对象按保留策略进入 `DELETE_PENDING` 后清理。
-- 主要错误：`401`、`404`、`503`。
+第一阶段不注册上传、查询和删除文件接口。相关 URL、字段、幂等语义、错误码和生命周期在后续阶段重新评审并冻结。
 
 #### FE-11 提交问题
 
-- 请求：`POST /api/v1/chats/{chatId}/questions`。
+- 请求：`POST /api/v1/questions/submission`。
 - Header：`Idempotency-Key` 必填。
 - Body：
 
 ```json
 {
-  "agentType": "SMART_DATA",
-  "question": "查询附件中产品的产品经理和管理费率",
-  "files": [
-    {
-      "fileId": "f491a01d-e75a-4d08-bdf3-452db66d8938",
-      "usage": "QUERY_INPUT"
-    }
-  ]
+  "chatId": "7b276a10-e7a7-44c3-902a-e73026f405a2",
+  "question": "查询悦享一号产品的产品经理和管理费率"
 }
 ```
 
 | 入参 | 必填 | 约束 |
 |---|---|---|
-| `chatId` | 是 | 当前 Owner 可访问的会话 UUID |
-| `agentType` | 是 | 一期仅 `SMART_DATA` 可执行；其他枚举或未知值返回 400 |
+| `chatId` | 否 | 空表示首次提问并创建会话；非空表示当前 Owner 可访问的已有会话 UUID |
+| `agentType` | 条件必填 | `chatId` 为空的首次提问必须传，一期仅 `SMART_DATA`；`chatId` 非空时省略，后端从会话读取且不允许修改 |
 | `question` | 是 | 去除首尾空白后 1～4000 字符 |
-| `files` | 否 | 默认 `[]`，最多 5 个，文件不得重复 |
-| `files[].fileId` | 是 | 必须属于当前 Owner 与会话，且状态为 `READY` |
-| `files[].usage` | 是 | `AUTO|QUERY_INPUT|EVIDENCE`，提交后作为该问题不可变快照 |
 
-- 成功：`202 Accepted`，Header `Location` 为回答事件流地址，Body 为 `Answer`，初始状态通常为 `PENDING`。
-- 幂等：相同 Owner、操作、Key 和请求指纹返回同一 `answerId`；同 Key 不同请求返回 `409 IDEMPOTENCY_CONFLICT`。
-- 主要错误：`400`、`404`、`409 FILE_NOT_READY/IDEMPOTENCY_CONFLICT`、`503`。
+- 成功：`202 Accepted`，Header `Location` 为回答事件流地址，Body 为 `QuestionSubmission {conversation, conversationCreated, answer}`，其中回答初始状态通常为 `PENDING`。首次提问返回 `conversationCreated=true`；已有会话追问返回 `false`。
+- 幂等：相同 Owner、操作、Key 和请求指纹返回同一 `conversation.id` 与 `answer.answerId`；同 Key 不同请求返回 `409 IDEMPOTENCY_CONFLICT`。
+- 主要错误：`400`、`404`、`409 IDEMPOTENCY_CONFLICT`、`503`。请求携带非空 `files` 时返回 `400 INVALID_REQUEST`。
 
 #### FE-12 查询回答快照
 
@@ -892,15 +862,15 @@ data: {"value":"管理费率为 0.30%","occurredAt":"2026-09-03T08:31:05Z"}
 - 请求：`POST /api/v1/answers/{answerId}/regenerations`。
 - Header：`Idempotency-Key` 必填；无 Body。
 - 成功：`202 Accepted`，返回新的 `Answer`，其 `regeneratedFromAnswerId` 等于原 `answerId`。
-- 语义：新增用户问题和回答，复制原问题已固化的附件引用，从意图识别开始执行完整流程；不覆盖旧答案、不直接复用旧证据、不调用 HiAgent `/query_again`。
+- 语义：新增用户问题和回答，从意图识别开始执行完整流程；不覆盖旧答案、不直接复用旧证据、不调用 HiAgent `/query_again`。
 - 主要错误：`404`、`409 ANSWER_ALREADY_TERMINAL/IDEMPOTENCY_CONFLICT`。`NEEDS_CLARIFICATION` 不允许重新生成，应提交下一条消息补充信息。
 
 #### FE-16 提交回答评价
 
-- 请求：`PUT /api/v1/answers/{answerId}/feedback`。
+- 请求：`POST /api/v1/answers/{answerId}/feedback`。
 - Body：`{"feedback":"LIKE"}` 或 `{"feedback":"DISLIKE"}`。
 - 成功：`204 No Content`；同一用户再次提交覆盖自己的展示状态。
-- 当前没有“取消评价”枚举；若产品要求取消，应新增 `DELETE /api/v1/answers/{answerId}/feedback`，不能用 `null` 复用本接口。
+- 当前没有“取消评价”枚举；若产品要求取消，应新增 `POST /api/v1/answers/{answerId}/feedback/cancellation`，不能用 `null` 复用本接口。
 
 ### 17.5 后端调用公司 HiAgent 接口
 
@@ -958,9 +928,11 @@ data: {"value":"管理费率为 0.30%","occurredAt":"2026-09-03T08:31:05Z"}
 | `PubAgentJump` | 固定 `false`，不向用户暴露平台内部 Agent 跳转消息 |
 | `QueryExtends.Files` | 当前不发送；文件结构经真实契约确认后才能启用 |
 
-- 成功：`text/event-stream`。当前解码器从事件 JSON 的 `Answer` 或 `answer` 读取累计/增量文本，并从 `MessageID`、`messageId` 或 `message_id` 捕获停止所需 ID。
+- 成功：`text/event-stream`。当前解码器只从事件 JSON 的精确根级字段 `Answer` 读取累计/增量文本，并从精确根级字段 `MessageID` 捕获停止所需 ID；不兼容猜测大小写或嵌套路径。
 - 完成：流正常结束且至少收到一个答案字段；否则返回内部错误 `COMPANY_MODEL_EMPTY_RESPONSE`。
 - 待冻结：完整 SSE 样例、结束事件、错误事件、`MessageID` 准确层级、用量字段、限流状态和断线语义。完成脱敏契约测试前不得启用生产流解码。
+
+平台字段按 ADR-019 映射到 `qa_answer`：`AppConversationID`、`MessageID` 分别保存为 `app_conversation_id`、`message_id`；`QueryID`、`TaskID`、`TotalTokens`、`Latency`、`TracingJsonStr`、`IntentionJsonStr` 和 `RetrieverResource` 已预留同语义 snake_case 列，在真实流字段路径确认前保持为空。本系统自身的会话、问题、回答正文及反馈字段不与平台对象混用。
 
 #### HI-03 停止平台消息
 
@@ -1116,7 +1088,7 @@ data: {"value":"管理费率为 0.30%","occurredAt":"2026-09-03T08:31:05Z"}
 
 ### 17.9 OBS 对象存储接口（SDK 逻辑契约，待云平台签署）
 
-OBS 通过服务端 SDK/内网网关调用，不向浏览器开放 Bucket。当前代码端口只实现 `store` 和 `delete`；一期完整目标如下：
+本节仅是后续阶段预留设计，不属于一期上线范围。届时 OBS 应通过服务端 SDK/内网网关调用，不向浏览器开放 Bucket；当前代码端口仅保留 `store` 和 `delete` 兼容骨架：
 
 | 操作 | 入参 | 出参 | 约束 |
 |---|---|---|---|
@@ -1168,7 +1140,7 @@ Redis 只承担跨实例事件与协调，不是答案事实源。目标逻辑�
 
 ## 18. 数据模型与迁移
 
-### 18.1 当前 V1～V6
+### 18.1 当前 V1～V20
 
 | 迁移 | 主要内容 |
 |---|---|
@@ -1178,6 +1150,11 @@ Redis 只承担跨实例事件与协调，不是答案事实源。目标逻辑�
 | V4 | `qa_conversation_context` 持久化结构化上下文与追问 |
 | V5 | `qa_file`、`qa_question_file` |
 | V6 | `qa_answer_event` 持久化执行事件和引用产物 |
+| V7 | `dws_product_info_d` 产品主题每日快照 |
+| V8～V17 | 统一十张表的 `id BIGINT AUTO_INCREMENT` 物理主键 |
+| V18 | 首次提问创建会话的幂等键 |
+| V19 | 对齐 HiAgent 回答元数据字段 |
+| V20 | `qa_conversation.agent_type` 固化首问选择，后续提问按会话路由 |
 
 已执行迁移不得回改，新结构只能通过后续前向迁移增加。
 
@@ -1356,17 +1333,17 @@ flowchart TB
 
 | 能力 | 当前状态 | 说明 |
 |---|---|---|
-| 前端统一工作台 | 已实现基线 | Agent 下拉、会话分组/虚拟滚动、首问标题前 100 字、可读滚动、附件和回答交互已实现 |
-| 前端恢复 | 已实现基线 | 历史回答、附件、执行事件、引用和活动回答跟随已有基础 |
+| 前端统一工作台 | 已实现基线 | Agent 下拉仅在新建会话展示，已有会话隐藏并锁定；会话分组/虚拟滚动、首问标题前 100 字、可读滚动和回答交互已实现；一期不显示上传入口 |
+| 前端恢复 | 已实现基线 | 历史回答、执行事件、引用和活动回答跟随已有基础；历史附件元数据只读兼容 |
 | 会话服务端搜索 | 待补 | 当前只分页查询会话，前端只能过滤已加载页；需实现标题关键词过滤及关键词绑定游标 |
 | 六边形分层、Jetty、XML 多环境 | 已实现 | 自动化验证通过 |
 | 场景计划工作流 | 已实现 | 只注册 `DUAL_CHANNEL_QA` 版本 1，五个节点顺序执行 |
-| Agent 路由 | 已实现 | 前端传 `SMART_DATA`，后端白名单校验；无 Agent 列表接口 |
+| Agent 路由 | 已实现 | 首问传 `SMART_DATA` 并固化到会话，后续提问省略字段且后端禁止切换；无 Agent 列表接口 |
 | 会话、回答、反馈与活动删除保护 | 已实现基线 | GoldenDB/MyBatis-Plus 持久化和稳定游标已有测试 |
 | 停止回答 | 已实现基线 | 持久停止任务已有，待真实 HiAgent 停止语义联调 |
 | 结构化上下文与追问 | 已实现骨架 | 生产识别器、授权候选和跨重启完整验证待完成 |
 | 业务语义查询 | 已实现代码 | 生产开关默认关闭，真实视图与口径待签署 |
-| 临时附件 | 部分实现 | 开发本地存储和问题关联已完成；真实 OBS、解析、OCR 和扫描待接入 |
+| 临时附件 | 一期不启用 | 上传路由默认不注册，提问携带非空文件引用会被拒绝；旧表和历史元数据仅作兼容保留 |
 | 回答事件恢复 | 部分实现 | GoldenDB 事件历史已完成；Redis 跨实例通知未完成 |
 | HiAgent | 已实现客户端骨架 | 真实认证、流样例、文件、停止和错误契约待联调 |
 | 公司知识库 | 待实现生产适配器 | API、权限和引用结构待确认 |
@@ -1374,17 +1351,17 @@ flowchart TB
 | 持久生成任务 | 待实现 | 当前本机投递不能满足重启续跑 |
 | 容量、安全、灾备验收 | 待完成 | 必须在真实环境执行 |
 
-当前本地质量证据：后端 139 项自动化测试通过；前端 62 项自动化测试通过。该结果不替代真实 GoldenDB、Redis、OBS、OCR、知识库、统一认证和 HiAgent 联调。
+当前本地质量证据以持续集成最新报告为准。该结果不替代真实 GoldenDB、Redis、知识库、统一认证和 HiAgent 联调；OBS、解析和 OCR 不属于一期验收依赖。
 
 ## 27. 分阶段实施计划
 
 | 阶段 | 主要交付 | 退出条件 |
 |---|---|---|
-| 1. 契约冻结 | SSO、知识库、HiAgent、GoldenDB 视图、OBS、OCR | 脱敏样例、字段、权限、错误码和 SLA 签署 |
-| 2. 数据与任务补齐 | 幂等、生成任务、DRAFT 会话、文件任务、证据和审计迁移 | GoldenDB 兼容、索引、前滚和补偿验证 |
-| 3. 认证与文件 | 公司认证、OBS、安全扫描、Excel、文本解析、OCR | 越权、恶意文件、孤儿对象和失败恢复通过 |
+| 1. 契约冻结 | SSO、知识库、HiAgent、GoldenDB 视图 | 脱敏样例、字段、权限、错误码和 SLA 签署 |
+| 2. 数据与任务补齐 | 幂等、生成任务、DRAFT 会话、证据和审计迁移 | GoldenDB 兼容、索引、前滚和补偿验证 |
+| 3. 认证接入 | 公司统一认证、权限映射和生产失败关闭 | 越权、会话失效、模拟用户关闭和审计验证通过 |
 | 4. 双通道真实接入 | 知识库适配器、业务视图、字段对账 | 权限、版本、冲突、空结果和失败契约通过 |
-| 5. HiAgent 联调 | 流式、文件读取、停止、错误和限流 | 正常、空流、异常流、超时和重复停止通过 |
+| 5. HiAgent 联调 | 流式回答、停止、错误和限流 | 正常、空流、异常流、超时和重复停止通过 |
 | 6. 可靠性 | 持久生成任务、Redis Stream、快照恢复、监控 | 多实例、进程重启、重复投递和缺口测试通过 |
 | 7. 上线验收 | 黄金集、安全、容量、灾备、运行手册 | 业务、技术、数据、安全和运维联合签署 |
 
@@ -1392,7 +1369,7 @@ flowchart TB
 
 - 数据库只做前向迁移；先扩展结构，再双写/回填，再切换读取，最后在后续版本收缩。
 - 新场景计划使用新版本注册；旧版本在存量任务完成前保留。
-- 功能开关控制真实知识库、业务视图、HiAgent、OBS/OCR 和 Redis，不在依赖未就绪时静默回退演示实现。
+- 功能开关控制真实知识库、业务视图、HiAgent 和 Redis，不在依赖未就绪时静默回退演示实现；文件上传开关在一期所有环境均关闭。
 - 前端和后端分别构建不可变镜像，先测试环境灰度，再生产小流量，最后全量。
 - 回滚应用版本时不回滚已执行 DDL；通过兼容旧字段的前一镜像或前滚修复恢复。
 - 外部适配器故障时关闭对应生产开关并显示明确不可用，不允许使用无证据模型回答替代。
@@ -1402,13 +1379,11 @@ flowchart TB
 1. 公司统一认证协议、身份声明和权限映射未冻结。
 2. 公司知识库查询、权限、版本和引用契约未冻结。
 3. GoldenDB 业务视图、字段口径、只读账号和 EXPLAIN 未签署。
-4. HiAgent 真实认证、SSE、MessageID、文件和停止契约未完成。
-5. 私有 OBS、安全扫描、Excel 解析、扫描 PDF/图片 OCR 未接入。
-6. 持久生成任务和跨实例 Redis Stream 未完成。
-7. 结构化证据、字段级冲突展示和完整追问恢复仍需补齐。
-8. DRAFT 会话与上传先于提问的生命周期尚未收口。
-9. 10 QPS/50 并发、准确性、安全、灾备和运维演练未完成。
-10. 数据分级、留存、审计、删除和模型数据外发规则未签署。
+4. HiAgent 真实认证、SSE、MessageID 和停止契约未完成。
+5. 持久生成任务和跨实例 Redis Stream 未完成。
+6. 结构化证据、字段级冲突展示和完整追问恢复仍需补齐。
+7. 10 QPS/50 并发、准确性、安全、灾备和运维演练未完成。
+8. 数据分级、留存、审计、删除和模型数据外发规则未签署。
 
 ## 30. 待确认事项
 

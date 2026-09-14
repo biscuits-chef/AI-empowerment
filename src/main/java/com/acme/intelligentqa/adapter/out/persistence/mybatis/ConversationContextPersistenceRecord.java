@@ -10,11 +10,18 @@ import java.sql.Timestamp;
 @TableName("qa_conversation_context")
 public class ConversationContextPersistenceRecord {
 
+    /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     /**
      * 会话 ID。
      */
-    @TableId(value = "conversation_id", type = IdType.INPUT)
+    @TableField("conversation_id")
     private String conversationId;
+    /** @return 数据库内部自增主键。 */
+    public Long getId() { return id; }
+    /** @param value 数据库内部自增主键。 */
+    public void setId(final Long value) { this.id = value; }
     /**
      * 用户所有者 ID。
      */

@@ -4,6 +4,7 @@ import com.acme.intelligentqa.domain.model.AnswerEvent;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.model.QuestionFileReference;
+import com.acme.intelligentqa.domain.model.QuestionSubmission;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -12,6 +13,25 @@ import java.util.function.Consumer;
  * 问题提交、回答读取、重生成和反馈的入站用例。
  */
 public interface QuestionAnswerUseCase {
+
+    /**
+     * 使用一个接口提交首次或后续问题。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param conversationId 会话 ID；首次提问时为空。
+     * @param agentType 用户选择的 Agent 类型。
+     * @param question 用户问题。
+     * @param files 本次问题引用的临时文件；第一阶段必须为空。
+     * @param idempotencyKey 覆盖会话、问题和回答创建的幂等键。
+     * @return 同一事务内持久化的会话与回答结果。
+     */
+    QuestionSubmission submitQuestion(
+            String ownerId,
+            UUID conversationId,
+            AgentType agentType,
+            String question,
+            List<QuestionFileReference> files,
+            String idempotencyKey);
 
     /**
      * 用户对回答的评价类型。

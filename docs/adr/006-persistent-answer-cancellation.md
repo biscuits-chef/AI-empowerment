@@ -13,7 +13,7 @@
 
 1. 回答增加 `CANCEL_REQUESTED`、`CANCELLED`、`CANCEL_FAILED` 状态以及停止原因、停止阶段、错误码和时间字段。
 2. 停止请求与 `qa_answer_cancel_task` 在同一事务写入；任务使用租约、执行次数和下次执行时间实现多节点抢占与恢复。
-3. 生成前阶段直接本地停止；模型生成阶段必须取得 `MessageID` 并调用 `/stop_message`。
+3. 生成前阶段直接本地停止；模型生成阶段必须取得 `MessageID`，从 `qa_answer.message_id` 恢复后调用 `/stop_message`。
 4. 外部停止调用不放在数据库事务内。成功、重试或最终失败分别以短事务提交。
 5. 所有生成状态迁移、增量保存、完成与失败均使用条件更新，停止与完成只允许一个终态获胜。
 6. 文本增量先写入 GoldenDB，再发布 SSE；停止成功和失败分别发布 `cancelled` 与 `cancellation_failed`。

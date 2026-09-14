@@ -5,6 +5,7 @@ import com.acme.intelligentqa.domain.model.AnswerEvent;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.model.QuestionFileReference;
+import com.acme.intelligentqa.domain.model.QuestionSubmission;
 import com.acme.intelligentqa.domain.model.TemporaryFile;
 import com.acme.intelligentqa.domain.port.in.AnswerCancellationUseCase;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
@@ -29,7 +30,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -75,24 +75,25 @@ public class QuestionAnswerController {
      *
      * @param principal 认证用户主体。
      *
-     * @param chatId 会话 ID。
-     *
      * @param idempotencyKey 幂等键。
      *
      * @param request 接口请求。
      *
      * @return 校验输入后提交当前问题。
      */
-    @PostMapping("/chats/{chatId}/questions")
-    public ResponseEntity<AnswerResponse> submit(
+    @PostMapping("/questions/submission")
+    public ResponseEntity<QuestionSubmissionResponse> submit(
             final Principal principal,
-            @PathVariable final UUID chatId,
             @RequestHeader("Idempotency-Key") final String idempotencyKey,
             @Valid @RequestBody final QuestionRequest request) {
-        final AnswerSnapshot answer = questionAnswerUseCase.submit(
-                owner(principal), chatId, request.getAgentType(), request.getQuestion(),
+        final QuestionSubmission submission = questionAnswerUseCase.submitQuestion(
+                owner(principal), request.getChatId(), request.agentTypeForSubmission(), request.getQuestion(),
                 request.fileReferences(), idempotencyKey);
-        return accepted(answer);
+        final URI streamUri = URI.create(
+                "/api/v1/answers/" + submission.answer().id() + "/events");
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .header(HttpHeaders.LOCATION, streamUri.toString())
+                .body(QuestionSubmissionResponse.from(submission));
     }
 
     /**
@@ -166,7 +167,7 @@ public class QuestionAnswerController {
      *
      * @return 用户反馈。
      */
-    @PutMapping("/answers/{answerId}/feedback")
+    @PostMapping("/answers/{answerId}/feedback")
     public ResponseEntity<Void> feedback(
             final Principal principal,
             @PathVariable final UUID answerId,
@@ -278,8 +279,9 @@ public class QuestionAnswerController {
      * 用户提交问题的请求体。
      */
     public static final class QuestionRequest {
-        /** 用户在前端选择的 Agent 类型。 */
-        @NotNull
+        /** 已有会话 ID；首次提问时为空。 */
+        private UUID chatId;
+        /** 首次提问时选择的 Agent 类型；已有会话提问时可省略。 */
         private AgentType agentType;
         /**
          * 用户问题。
@@ -287,23 +289,40 @@ public class QuestionAnswerController {
         @NotBlank
         @Size(max = 4000)
         private String question;
-        /** 本次问题引用的临时文件。 */
+        /** 兼容保留的问题文件引用；第一阶段必须为空。 */
         @Valid
-        @Size(max = 5)
+        @Size(max = 0, message = "第一阶段不支持文件上传")
         private List<QuestionFileRequest> files = Collections.emptyList();
 
+        /** @return 已有会话 ID；首次提问时为空。 */
+        public UUID getChatId() { return chatId; }
+        /** @param value 已有会话 ID；首次提问时为空。 */
+        public void setChatId(final UUID value) { this.chatId = value; }
+
         /**
-         * 返回用户选择的 Agent 类型。
+         * 返回首次提问选择的 Agent 类型。
          *
-         * @return 用户选择的 Agent 类型。
+         * @return 首次提问选择的 Agent 类型；已有会话提问时可能为空。
          */
         public AgentType getAgentType() { return agentType; }
         /**
-         * 设置用户选择的 Agent 类型。
+         * 设置首次提问选择的 Agent 类型。
          *
-         * @param value 用户选择的 Agent 类型。
+         * @param value 首次提问选择的 Agent 类型。
          */
         public void setAgentType(final AgentType value) { this.agentType = value; }
+
+        /**
+         * 校验首次提问已经选择 Agent，并返回本次请求值。
+         *
+         * @return 首次提问选择的 Agent 类型；已有会话提问时可能为空。
+         */
+        private AgentType agentTypeForSubmission() {
+            if (chatId == null && agentType == null) {
+                throw new IllegalArgumentException("agentType is required for a new conversation");
+            }
+            return agentType;
+        }
 
         /**
          * 返回用户问题。
@@ -364,6 +383,54 @@ public class QuestionAnswerController {
         public TemporaryFile.Usage getUsage() { return usage; }
         /** @param value 本次问题中的文件使用角色。 */
         public void setUsage(final TemporaryFile.Usage value) { this.usage = value; }
+    }
+
+    /**
+     * 统一提问接口返回的会话与回答受理结果。
+     */
+    public static final class QuestionSubmissionResponse {
+        /** 提问所属的会话。 */
+        private final ChatController.ConversationResponse conversation;
+        /** 本次请求是否采用首次提问创建会话语义。 */
+        private final boolean conversationCreated;
+        /** 已经持久化的回答受理快照。 */
+        private final AnswerResponse answer;
+
+        /**
+         * 创建统一提问响应。
+         *
+         * @param conversation 提问所属的会话。
+         * @param conversationCreated 本次请求是否采用首次提问创建会话语义。
+         * @param answer 已经持久化的回答受理快照。
+         */
+        private QuestionSubmissionResponse(
+                final ChatController.ConversationResponse conversation,
+                final boolean conversationCreated,
+                final AnswerResponse answer) {
+            this.conversation = conversation;
+            this.conversationCreated = conversationCreated;
+            this.answer = answer;
+        }
+
+        /**
+         * 将领域结果转换为接口响应。
+         *
+         * @param submission 统一提问领域结果。
+         * @return 可序列化的统一提问响应。
+         */
+        static QuestionSubmissionResponse from(final QuestionSubmission submission) {
+            return new QuestionSubmissionResponse(
+                    ChatController.ConversationResponse.from(submission.conversation()),
+                    submission.conversationCreated(),
+                    AnswerResponse.from(submission.answer()));
+        }
+
+        /** @return 提问所属的会话。 */
+        public ChatController.ConversationResponse getConversation() { return conversation; }
+        /** @return 本次请求采用首次提问创建会话语义时返回 true。 */
+        public boolean isConversationCreated() { return conversationCreated; }
+        /** @return 已经持久化的回答受理快照。 */
+        public AnswerResponse getAnswer() { return answer; }
     }
 
     /**

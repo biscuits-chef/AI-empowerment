@@ -1,6 +1,6 @@
 # 智能问答与智能审核平台（技术代号）
 
-基于 Java 8、Spring Boot 2.7、MyBatis-Plus、GoldenDB、Redis、Maven、OBS 和 Docker 的企业内部智能服务。正式服务名称尚未确认，当前工程名为 `intelligent-qa-audit-service`。
+基于 Java 8、Spring Boot 2.7、MyBatis-Plus、GoldenDB、Redis、Maven 和 Docker 的企业内部智能服务。正式服务名称尚未确认，当前工程名为 `intelligent-qa-audit-service`。
 
 第一阶段聚焦智能问答：会话管理、接入公司知识库平台查询接口、受控业务数据查询、大模型流式回答、回答反馈和重新发起原问题。知识上传维护由公司知识库平台负责，不在本系统范围内；合同智能比对、申赎确认单核对及合同智能审核保留为后续独立阶段。
 
@@ -20,7 +20,7 @@
 - 指代消解和追问：已验证实体可跨历史窗口复用；对象缺失或歧义时返回持久化追问，用户回复候选序号、名称或唯一标识后恢复原意图。
 - 最近有效对话同时传入意图识别和模型请求；结构化实体与待追问状态持久化到 GoldenDB，Token 自适应摘要仍列为上线前任务。
 - GoldenDB 保存会话、问题、回答、状态、反馈和结构化上下文，是事实来源；MyBatis-Plus 负责数据访问，Flyway 仍是唯一表结构迁移入口。
-- 一期附件已具备上传、列表、删除、用途选择、Owner/会话隔离、V5 元数据、问题文件关联和历史用户消息附件恢复；开发环境使用受限本地存储，生产 OBS/安全扫描/解析/OCR 未完成前失败关闭。
+- 2026-09-14 范围调整后一期不支持文件上传：前端不展示入口，后端默认不注册文件控制器，问题请求拒绝非空文件引用。已有文件表和历史附件读取仅用于兼容开发数据及后续扩展。
 - Redis 计划承担跨实例事件重放、协调和限流；当前内存事件适配器仅供本地开发。
 - 禁止大模型生成任意 SQL 并直接执行；一期业务查询通过标准语义字段、受控 Query Plan 和两个固定参数化 MyBatis 语句执行。
 - 未配置真实依赖时默认失败关闭；`QA_DEMO_MODE=true` 仅启用明确标记的演示回答。
@@ -63,7 +63,7 @@ mvn -B -ntp clean verify
 
 该命令执行 Checkstyle、PMD/CPD、SpotBugs、ArchUnit、JaCoCo、Maven Enforcer、单元测试和集成测试门禁。
 
-当前基线于 2026-09-03 在 OpenJDK 8u452、Maven 3.9.9 上通过完整门禁：117 个自动化测试无失败、无错误、无跳过，Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文注释检查、JaCoCo 和可执行 JAR 构建全部成功。新增回归覆盖双通道场景计划顺序、版本、节点生命周期记录、前置条件跳过与合法短路，以及开发模拟用户、非开发环境启动保护、Agent 类型必填/非法值拒绝与执行路由、稳定游标、活动会话删除保护、执行事件与产物恢复、一期产品/交易语义解析、查询规划、固定 SQL 编译、Owner 行权限与结果转换、附件大小、类型、文件头、失败补偿、归属、状态、延迟清理、随问题展示、历史恢复和重新发起时的附件继承边界；持久化回归同时覆盖 30,000 个中文字符的完整回答、助手消息、结构化追问上下文、执行事件和问题文件关联。本地门禁不替代真实 GoldenDB、Redis、OBS、知识库和大模型环境验证。
+当前基线于 2026-09-14 在 OpenJDK 8u452、Maven 3.9.9 上通过完整门禁：160 个单元/架构测试和 3 个集成测试无失败、无错误、无跳过，Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文注释检查、JaCoCo 和可执行 JAR 构建全部成功。回归覆盖一期文件路由关闭、问题附件拒绝、重新生成不复制历史附件，以及双通道场景计划、开发模拟用户、Agent 路由、稳定游标、活动会话删除保护、执行恢复、产品语义查询和持久化边界。本地门禁不替代真实 GoldenDB、Redis、知识库和公司大模型环境验证。
 
 ## 本地运行
 
@@ -109,20 +109,16 @@ BUSINESS_SEMANTIC_MODEL_VERSION=phase1-v1
 
 ## 主要 API
 
-- `POST /api/v1/chats`：新建会话
 - `GET /api/v1/chats?cursor=...&limit=30`：稳定游标会话列表
-- `GET /api/v1/chats/{chatId}/messages`：历史消息；用户消息包含随该次问题提交的安全附件元数据
-- `PATCH /api/v1/chats/{chatId}`：修改名称
-- `DELETE /api/v1/chats/{chatId}`：逻辑删除；活动回答存在时返回 `409` 和“会话正在执行，请停止后删除”
-- `POST /api/v1/chats/{chatId}/files`：上传临时附件
-- `GET /api/v1/chats/{chatId}/files`：查询会话附件
-- `DELETE /api/v1/chats/{chatId}/files/{fileId}`：逻辑删除临时附件；已随问题提交的对象延迟清理
-- `POST /api/v1/chats/{chatId}/questions`：提交问题；请求体必须携带前端所选 `agentType`，一期仅受理 `SMART_DATA`
+- `GET /api/v1/chats/{chatId}/messages`：历史消息；可能只读返回开发期旧附件元数据
+- `POST /api/v1/chats/{chatId}/rename`：修改名称
+- `POST /api/v1/chats/{chatId}/deletion`：逻辑删除；活动回答存在时返回 `409` 和“会话正在执行，请停止后删除”
+- `POST /api/v1/questions/submission`：统一提交问题；`chatId=null` 时必须携带 `agentType=SMART_DATA`，并原子创建会话、问题和回答；`chatId` 非空时向已有会话追问且不发送 `agentType`，后端从会话读取不可变类型
 - `GET /api/v1/answers/{answerId}/events`：SSE 流式回答
 - `GET /api/v1/answers/{answerId}`：回答快照
 - `POST /api/v1/answers/{answerId}/regenerations`：把原问题作为新问答轮次重新发起，并保留原问答
 - `POST /api/v1/answers/{answerId}/cancellation`：停止生成回答
-- `PUT /api/v1/answers/{answerId}/feedback`：喜欢/不喜欢
+- `POST /api/v1/answers/{answerId}/feedback`：喜欢/不喜欢
 
 完整契约见 `docs/api/intelligent-qa-api.md`。
 

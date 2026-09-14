@@ -52,11 +52,11 @@ public interface CancellationRepositoryPort {
      *
      * @param answerId 回答 ID。
      *
-     * @param providerMessageId 公司模型侧消息 ID。
+     * @param messageId 公司模型侧消息 ID。
      *
      * @param dispatchAt 本次任务分发时间。
      */
-    void recordProviderMessageId(UUID answerId, String providerMessageId, Instant dispatchAt);
+    void recordMessageId(UUID answerId, String messageId, Instant dispatchAt);
 
     /**
      * 查询本批可领取的停止任务。
@@ -205,7 +205,7 @@ public interface CancellationRepositoryPort {
         /**
          * 公司模型侧消息 ID。
          */
-        private final String providerMessageId;
+        private final String messageId;
         /**
          * 停止时所处阶段。
          */
@@ -222,7 +222,7 @@ public interface CancellationRepositoryPort {
          *
          * @param ownerId 用户所有者 ID。
          *
-         * @param providerMessageId 公司模型侧消息 ID。
+         * @param messageId 公司模型侧消息 ID。
          *
          * @param cancelledStage 停止时所处阶段。
          *
@@ -231,12 +231,12 @@ public interface CancellationRepositoryPort {
         public Task(
                 final UUID answerId,
                 final String ownerId,
-                final String providerMessageId,
+                final String messageId,
                 final String cancelledStage,
                 final int attemptCount) {
             this.answerId = Objects.requireNonNull(answerId, "answerId must not be null");
             this.ownerId = requireText(ownerId, "ownerId");
-            this.providerMessageId = providerMessageId;
+            this.messageId = messageId;
             this.cancelledStage = requireText(cancelledStage, "cancelledStage");
             this.attemptCount = attemptCount;
         }
@@ -258,7 +258,7 @@ public interface CancellationRepositoryPort {
          *
          * @return 公司模型侧消息 ID。
          */
-        public String providerMessageId() { return providerMessageId; }
+        public String messageId() { return messageId; }
         /**
          * 返回停止时所处阶段。
          *

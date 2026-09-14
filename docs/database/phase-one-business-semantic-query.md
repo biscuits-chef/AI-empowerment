@@ -42,7 +42,8 @@
 
 `dws_product_info_d` 是产品主题每日全量快照表：
 
-- 复合主键：`PRDC_CD + DT`。
+- 物理主键：`id BIGINT AUTO_INCREMENT`；数据中台写入时必须使用显式列清单并忽略该列。
+- 业务唯一键：`PRDC_CD + DT`。
 - 产品解析字段：`PRDC_CD`、`PRDC_NM`、`PRDC_ABBR`、`PRDC_FLL_NM`。
 - 产品经理：`PRDC_MNGR_NM`。
 - 监管口径投资经理：`INVS_MNGR_NM`。
@@ -107,7 +108,7 @@ app.business-query.semantic-model-version=phase1-v1
 ## 8. 生产启用门禁
 
 - 数据负责人签署三类元数据、字段类型、日期质量规则和投资经理口径。
-- 在真实 GoldenDB 验证迁移、字符集、复合主键、索引长度和 SQL 方言。
+- 在真实 GoldenDB 验证迁移、字符集、自增主键、业务唯一键、索引长度和 SQL 方言。
 - 对最新快照、实体解析、经理查询和日期列表 SQL 保存 `EXPLAIN` 证据。
 - 明确完整快照发布、重复批次、失败重试和数据回滚方式。
 - 使用独立只读账号并验证产品数据权限。

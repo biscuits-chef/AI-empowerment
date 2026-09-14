@@ -11,16 +11,25 @@ import java.time.Instant;
 @TableName("qa_conversation")
 public class ConversationPersistenceRecord {
 
+    /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     /**
-     * 唯一标识。
+     * 对外稳定 UUID 标识。
      */
-    @TableId(type = IdType.INPUT)
-    private String id;
+    @TableField("public_id")
+    private String publicId;
     /**
      * 用户所有者 ID。
      */
     @TableField("owner_id")
     private String ownerId;
+    /** 首次提问创建会话时使用的幂等键。 */
+    @TableField("creation_idempotency_key")
+    private String creationIdempotencyKey;
+    /** 会话创建时选定且不可变更的 Agent 类型。 */
+    @TableField("agent_type")
+    private String agentType;
     /**
      * 会话名称。
      */
@@ -41,18 +50,22 @@ public class ConversationPersistenceRecord {
     @TableField("deleted_at")
     private Timestamp deletedAt;
 
+    /** @return 数据库内部自增主键。 */
+    public Long getId() { return id; }
+    /** @param value 数据库内部自增主键。 */
+    public void setId(final Long value) { this.id = value; }
     /**
-     * 返回唯一标识。
+     * 返回对外稳定 UUID 标识。
      *
-     * @return 唯一标识。
+     * @return 对外稳定 UUID 标识。
      */
-    public String getId() { return id; }
+    public String getPublicId() { return publicId; }
     /**
-     * 设置唯一标识。
+     * 设置对外稳定 UUID 标识。
      *
-     * @param id 唯一标识。
+     * @param value 对外稳定 UUID 标识。
      */
-    public void setId(final String id) { this.id = id; }
+    public void setPublicId(final String value) { this.publicId = value; }
     /**
      * 返回所属用户 ID。
      *
@@ -65,6 +78,14 @@ public class ConversationPersistenceRecord {
      * @param ownerId 用户所有者 ID。
      */
     public void setOwnerId(final String ownerId) { this.ownerId = ownerId; }
+    /** @return 首次提问创建会话时使用的幂等键。 */
+    public String getCreationIdempotencyKey() { return creationIdempotencyKey; }
+    /** @param value 首次提问创建会话时使用的幂等键。 */
+    public void setCreationIdempotencyKey(final String value) { this.creationIdempotencyKey = value; }
+    /** @return 会话创建时选定且不可变更的 Agent 类型。 */
+    public String getAgentType() { return agentType; }
+    /** @param value 会话创建时选定且不可变更的 Agent 类型。 */
+    public void setAgentType(final String value) { this.agentType = value; }
     /**
      * 返回会话名称。
      *

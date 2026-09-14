@@ -1,12 +1,14 @@
 package com.acme.intelligentqa.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.acme.intelligentqa.application.workflow.QuestionWorkflowEngine;
 import com.acme.intelligentqa.application.workflow.ScenarioPlanRegistry;
@@ -33,6 +35,7 @@ import com.acme.intelligentqa.domain.model.EntityCandidate;
 import com.acme.intelligentqa.domain.model.KnowledgeChunk;
 import com.acme.intelligentqa.domain.model.QueryIntent;
 import com.acme.intelligentqa.domain.model.QuestionFileReference;
+import com.acme.intelligentqa.domain.model.QuestionSubmission;
 import com.acme.intelligentqa.domain.model.TemporaryFile;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.in.AnswerCancellationUseCase;
@@ -124,16 +127,77 @@ class QuestionAnswerServiceTest {
     }
 
     /**
-     * 验证就绪且属于当前会话的附件会形成问题不可变关联。
+     * 验证首次提问原子创建会话与回答，并按同一个幂等键复用完整结果。
      */
     @Test
-    void validatesAndAttachesReadyFilesToQuestion() {
+    void createsConversationWithFirstQuestionAndReusesIdempotentResult() {
+        final QuestionAnswerService service = service(
+                (owner, question, limit) -> Collections.emptyList(),
+                (owner, question, intent, limit) -> Collections.emptyList(),
+                (request, consumer) -> new LanguageModelPort.GenerationResult("model", "stop"),
+                properties(100));
+
+        final QuestionSubmission first = service.submitQuestion(
+                OWNER, null, AgentType.SMART_DATA, "悦享三号的投资经理是谁？",
+                Collections.emptyList(), "unified-first-key");
+        final QuestionSubmission replayed = service.submitQuestion(
+                OWNER, null, AgentType.SMART_DATA, "悦享三号的投资经理是谁？",
+                Collections.emptyList(), "unified-first-key");
+
+        assertTrue(first.conversationCreated());
+        assertEquals("悦享三号的投资经理是谁？", first.conversation().title());
+        assertEquals(AgentType.SMART_DATA, first.conversation().agentType());
+        assertEquals(first.conversation().id(), first.answer().conversationId());
+        assertEquals(first.conversation().id(), replayed.conversation().id());
+        assertEquals(first.answer().id(), replayed.answer().id());
+        assertEquals(2, conversations.size());
+        assertEquals(1, answers.createdCount);
+    }
+
+    /**
+     * 验证后续问题继续使用已有会话，不会创建第二个会话。
+     */
+    @Test
+    void submitsFollowUpToExistingConversationWithoutCreatingConversation() {
+        final QuestionAnswerService service = service(
+                (owner, question, limit) -> Collections.emptyList(),
+                (owner, question, intent, limit) -> Collections.emptyList(),
+                (request, consumer) -> new LanguageModelPort.GenerationResult("model", "stop"),
+                properties(100));
+
+        final QuestionSubmission submission = service.submitQuestion(
+                OWNER, conversationId, null, "那产品经理呢？",
+                Collections.emptyList(), "unified-follow-up-key");
+
+        assertFalse(submission.conversationCreated());
+        assertEquals(conversationId, submission.conversation().id());
+        assertEquals(conversationId, submission.answer().conversationId());
+        assertEquals(1, conversations.size());
+    }
+
+    /**
+     * 验证已有会话不能通过后续问题修改首次选定的 Agent 类型。
+     */
+    @Test
+    void rejectsChangingAgentTypeWithinExistingConversation() {
+        final QuestionAnswerService service = service(
+                (owner, question, limit) -> Collections.emptyList(),
+                (owner, question, intent, limit) -> Collections.emptyList(),
+                (request, consumer) -> new LanguageModelPort.GenerationResult("model", "stop"),
+                properties(100));
+
+        assertThrows(IllegalArgumentException.class, () -> service.submitQuestion(
+                OWNER, conversationId, AgentType.CONTRACT_REVIEW, "审核合同",
+                Collections.emptyList(), "agent-change-key"));
+        assertEquals(0, answers.createdCount);
+    }
+
+    /**
+     * 验证第一阶段在应用服务边界拒绝附件引用。
+     */
+    @Test
+    void rejectsFileReferencesInPhaseOne() {
         final UUID fileId = UUID.randomUUID();
-        final TemporaryFile file = new TemporaryFile(
-                fileId, conversationId, OWNER, "产品编号.txt", "text/plain", 10L,
-                "hash", "temporary/object", TemporaryFile.Usage.QUERY_INPUT,
-                TemporaryFile.Status.READY, NOW, NOW);
-        when(temporaryFiles.findActive(OWNER, conversationId, fileId)).thenReturn(Optional.of(file));
         final QuestionFileReference reference = new QuestionFileReference(
                 fileId, TemporaryFile.Usage.QUERY_INPUT);
         final QuestionAnswerService service = service(
@@ -142,13 +206,11 @@ class QuestionAnswerServiceTest {
                 (request, consumer) -> new LanguageModelPort.GenerationResult("model", "stop"),
                 properties(100));
 
-        final AnswerSnapshot answer = service.submit(
-                OWNER, conversationId, "查询附件中的产品", Collections.singletonList(reference), "file-key");
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.submit(
+                OWNER, conversationId, "查询附件中的产品", Collections.singletonList(reference), "file-key"));
 
-        verify(temporaryFiles).attachToQuestion(
-                org.mockito.ArgumentMatchers.eq(answer.questionId()),
-                org.mockito.ArgumentMatchers.eq(Collections.singletonList(reference)),
-                org.mockito.ArgumentMatchers.eq(NOW));
+        assertEquals("第一阶段不支持文件上传", exception.getMessage());
+        verifyNoInteractions(temporaryFiles);
     }
 
     /**
@@ -256,7 +318,7 @@ class QuestionAnswerServiceTest {
     }
 
     /**
-     * 验证重新生成会把原问题和附件作为完整的新问答轮次再次提交。
+     * 验证重新生成只复用原问题文本，不会复制历史附件。
      */
     @Test
     void regeneratesRecordsFeedbackAndSubscribes() {
@@ -268,11 +330,6 @@ class QuestionAnswerServiceTest {
         };
         final QuestionAnswerService service = service(knowledge, business, model, properties(100));
         final AnswerSnapshot first = service.submit(OWNER, conversationId, "原问题", "first");
-        final QuestionFileReference originalFile = new QuestionFileReference(
-                UUID.randomUUID(), TemporaryFile.Usage.QUERY_INPUT);
-        when(temporaryFiles.listQuestionReferences(first.questionId()))
-                .thenReturn(Collections.singletonList(originalFile));
-
         service.recordFeedback(OWNER, first.id(), QuestionAnswerUseCase.Feedback.LIKE);
         final AnswerSnapshot regenerated = service.regenerate(OWNER, first.id(), "second");
         final AnswerSnapshot replayed = service.regenerate(OWNER, first.id(), "second");
@@ -287,8 +344,7 @@ class QuestionAnswerServiceTest {
         assertNotEquals(first.id(), regenerated.id());
         assertNotEquals(first.questionId(), regenerated.questionId());
         assertEquals("原问题", answers.findQuestion(OWNER, regenerated.id()).get());
-        verify(temporaryFiles).attachToQuestion(
-                regenerated.questionId(), Collections.singletonList(originalFile), NOW);
+        verify(temporaryFiles, never()).listQuestionReferences(first.questionId());
         assertTrue(received.size() > 0);
         assertEquals(regenerated.id(), service.getAnswer(OWNER, regenerated.id()).id());
         assertThrows(IllegalArgumentException.class, () -> service.subscribe(
@@ -1049,9 +1105,11 @@ class QuestionAnswerServiceTest {
      */
     private static final class FakeConversationRepository implements ConversationRepositoryPort {
         /**
-         * 会话领域对象。
+         * 会话领域对象集合。
          */
-        private final Conversation conversation;
+        private final Map<UUID, Conversation> values = new HashMap<>();
+        /** 首次提问幂等键到会话 ID 的索引。 */
+        private final Map<String, UUID> creationKeys = new HashMap<>();
         /**
          * 最近对话历史。
          */
@@ -1063,7 +1121,7 @@ class QuestionAnswerServiceTest {
          * @param conversation 会话领域对象。
          */
         FakeConversationRepository(final Conversation conversation) {
-            this.conversation = conversation;
+            values.put(conversation.id(), conversation);
         }
 
         /**
@@ -1077,7 +1135,8 @@ class QuestionAnswerServiceTest {
          */
         @Override
         public Optional<Conversation> findActive(final String ownerId, final UUID id) {
-            return conversation.id().equals(id) && conversation.ownerId().equals(ownerId)
+            final Conversation conversation = values.get(id);
+            return conversation != null && conversation.ownerId().equals(ownerId)
                     ? Optional.of(conversation) : Optional.empty();
         }
 
@@ -1107,7 +1166,50 @@ class QuestionAnswerServiceTest {
          * @return 创建并持久化业务对象。
          */
         @Override public Conversation create(final UUID id, final String owner, final String title, final Instant now) {
-            throw new UnsupportedOperationException();
+            final Conversation created = new Conversation(id, owner, title, now, now);
+            values.put(id, created);
+            return created;
+        }
+        /**
+         * 按幂等键创建或复用首次提问会话。
+         *
+         * @param id 新会话 ID。
+         * @param owner 当前认证用户标识。
+         * @param title 会话名称。
+         * @param agentType 会话创建时选定且不可变更的 Agent 类型。
+         * @param idempotencyKey 首次提问幂等键。
+         * @param now 当前时间。
+         * @return 新创建或已经存在的会话。
+         */
+        @Override public Conversation createForQuestion(
+                final UUID id,
+                final String owner,
+                final String title,
+                final AgentType agentType,
+                final String idempotencyKey,
+                final Instant now) {
+            final String indexKey = owner + ":" + idempotencyKey;
+            final UUID existingId = creationKeys.get(indexKey);
+            if (existingId != null) {
+                return values.get(existingId);
+            }
+            final Conversation created = new Conversation(id, owner, title, agentType, now, now);
+            values.put(id, created);
+            creationKeys.put(indexKey, id);
+            return created;
+        }
+        /**
+         * 按用户和首次提问幂等键查找会话。
+         *
+         * @param ownerId 当前认证用户标识。
+         * @param idempotencyKey 首次提问幂等键。
+         * @return 匹配的会话。
+         */
+        @Override public Optional<Conversation> findActiveByCreationKey(
+                final String ownerId,
+                final String idempotencyKey) {
+            return Optional.ofNullable(creationKeys.get(ownerId + ":" + idempotencyKey))
+                    .map(values::get);
         }
         /**
          * 按所属用户查询会话列表。
@@ -1191,6 +1293,9 @@ class QuestionAnswerServiceTest {
         void addHistory(final ChatMessage message) {
             history.add(message);
         }
+
+        /** @return 当前保存的会话数量。 */
+        int size() { return values.size(); }
     }
 
     /**
@@ -1311,6 +1416,19 @@ class QuestionAnswerServiceTest {
          */
         @Override public boolean transitionStatus(final UUID answerId, final AnswerSnapshot.Status status) {
             replace(answerId, status, values.get(answerId).content(), null, null);
+            return true;
+        }
+        /**
+         * 保存公司 HiAgent 创建会话接口返回的应用会话 ID。
+         *
+         * @param answerId 回答 ID。
+         *
+         * @param appConversationId 公司 HiAgent 应用会话 ID。
+         *
+         * @return 测试仓储始终返回 true。
+         */
+        @Override public boolean recordAppConversationId(
+                final UUID answerId, final String appConversationId) {
             return true;
         }
         /**
@@ -1521,12 +1639,12 @@ class QuestionAnswerServiceTest {
          *
          * @param answerId 回答 ID。
          *
-         * @param providerMessageId 公司模型侧消息 ID。
+         * @param messageId 公司模型侧消息 ID。
          *
          * @param dispatchAt 本次任务分发时间。
          */
-        @Override public void recordProviderMessageId(
-                final UUID answerId, final String providerMessageId, final Instant dispatchAt) { }
+        @Override public void recordMessageId(
+                final UUID answerId, final String messageId, final Instant dispatchAt) { }
         /**
          * 查询本批可领取的停止任务。
          *

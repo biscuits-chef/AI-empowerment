@@ -55,6 +55,7 @@
     <entry key="app.company-model.max-request-characters">${COMPANY_MODEL_MAX_REQUEST_CHARACTERS:100000}</entry>
     <entry key="spring.servlet.multipart.max-file-size">1MB</entry>
     <entry key="spring.servlet.multipart.max-request-size">6MB</entry>
+    <entry key="app.file.upload-enabled">false</entry>
     <entry key="app.file.maximum-bytes">${QA_FILE_MAXIMUM_BYTES:1048576}</entry>
     <entry key="app.file.maximum-files-per-conversation">${QA_FILE_MAXIMUM_COUNT:5}</entry>
     <entry key="app.file.local-root">${QA_FILE_LOCAL_ROOT:/tmp/intelligent-qa-files}</entry>

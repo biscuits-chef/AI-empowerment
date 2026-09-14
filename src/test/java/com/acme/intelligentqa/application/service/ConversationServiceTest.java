@@ -8,6 +8,7 @@ import com.acme.intelligentqa.common.error.ResourceNotFoundException;
 import com.acme.intelligentqa.domain.model.AnswerEvent;
 import com.acme.intelligentqa.domain.model.ChatMessage;
 import com.acme.intelligentqa.domain.model.Conversation;
+import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.port.out.ConversationRepositoryPort;
 import com.acme.intelligentqa.domain.port.out.AnswerEventHistoryPort;
 import java.time.Clock;
@@ -132,6 +133,31 @@ class ConversationServiceTest {
         @Override
         public Conversation create(final UUID id, final String ownerId, final String title, final Instant now) {
             final Conversation conversation = new Conversation(id, ownerId, title, now, now);
+            values.put(id, conversation);
+            return conversation;
+        }
+
+        /**
+         * 按首次提问参数创建带固定 Agent 类型的测试会话。
+         *
+         * @param id 唯一标识。
+         * @param ownerId 用户所有者 ID。
+         * @param title 会话名称。
+         * @param agentType 会话创建时选定且不可变更的 Agent 类型。
+         * @param idempotencyKey 首次提问幂等键。
+         * @param now 当前时间。
+         * @return 已创建的测试会话。
+         */
+        @Override
+        public Conversation createForQuestion(
+                final UUID id,
+                final String ownerId,
+                final String title,
+                final AgentType agentType,
+                final String idempotencyKey,
+                final Instant now) {
+            final Conversation conversation = new Conversation(
+                    id, ownerId, title, agentType, now, now);
             values.put(id, conversation);
             return conversation;
         }

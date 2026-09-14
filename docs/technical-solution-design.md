@@ -1,6 +1,6 @@
 # AI 赋能项目一期技术方案设计说明书
 
-> 本文档为 V1.0 历史评审稿。当前技术方案已经重新整理为 [V2.0](technical-solution-design-v2.md)，后续评审与实施以 V2.0 为准。
+> 本文档为 V1.0 历史评审稿。当前技术方案已经重新整理为 [V2.2](technical-solution-design-v2.md)，后续评审与实施以 V2.2 为准。2026-09-14 起一期不支持文件上传，本文涉及临时文件、OBS 和 OCR 的内容只作为后续阶段历史设计参考。
 
 | 文档属性 | 内容 |
 |---|---|
@@ -220,6 +220,8 @@ dws_product_info_d / 兼容交易语义视图
 
 Flyway 创建 `dws_product_info_d` 空表及索引，数据中台负责同步业务快照。生产启用前必须完成真实 GoldenDB 日期质量、完整快照发布、产品数据权限、只读账号、独立数据源、SQL 静态审查和 `EXPLAIN` 验证。
 
+所有数据表的唯一物理主键统一为 `id BIGINT AUTO_INCREMENT`，不得使用 `pk_id`、UUID 或复合业务主键。资源 UUID 改存 `public_id UNIQUE`，继续用于 API 和领域契约；数据库自增值只属于持久化适配器。
+
 ## 8. 知识库、证据与冲突处理
 
 ### 8.1 知识库边界
@@ -254,7 +256,7 @@ retrievedAt             本次查询时间
 - 同一字段不一致时，输出所有候选值、来源和时间，并强制加入人工复核提示。
 - 必要依赖失败不能伪装成“未查到数据”。
 
-## 9. 临时文件、OBS 与 OCR
+## 9. 后续阶段临时文件、OBS 与 OCR（一期范围外）
 
 ### 9.1 文件业务角色
 
@@ -310,7 +312,9 @@ POST {baseUrl}/stop_message
   MessageID
 ```
 
-本系统为每次回答生成创建独立 HiAgent 会话，不把 HiAgent 会话作为本系统长期上下文的事实源。重新生成会创建新的问题与回答记录，复制原问题文本和不可变附件用途，并重新执行意图校验、知识检索、数据查询和证据对账，不直接复用旧答案。
+本系统为每次回答生成创建独立 HiAgent 会话，不把 HiAgent 会话作为本系统长期上下文的事实源。重新生成会创建新的问题与回答记录，只复制原问题文本，不复制历史附件，并重新执行意图校验、知识检索、数据查询和证据对账，不直接复用旧答案。
+
+平台 `AppConversationID` 和 `MessageID` 分别保存为 `qa_answer.app_conversation_id`、`qa_answer.message_id`。详情接口中的 `QueryID`、`TaskID`、`TotalTokens`、`Latency`、`TracingJsonStr`、`IntentionJsonStr` 和 `RetrieverResource` 已按同语义字段预留，但在真实流事件路径确认前保持为空；本系统自身会话、问题和回答正文不与平台对象混用。
 
 ### 10.2 提示词安全边界
 
@@ -331,24 +335,20 @@ POST {baseUrl}/stop_message
 ```text
 GET    /api/v1/me
 
-POST   /api/v1/chats
 GET    /api/v1/chats
 GET    /api/v1/chats/{chatId}/messages
-PATCH  /api/v1/chats/{chatId}
-DELETE /api/v1/chats/{chatId}
+POST   /api/v1/chats/{chatId}/rename
+POST   /api/v1/chats/{chatId}/deletion
 
-POST   /api/v1/chats/{chatId}/files
-GET    /api/v1/chats/{chatId}/files
-GET    /api/v1/chats/{chatId}/files/{fileId}
-DELETE /api/v1/chats/{chatId}/files/{fileId}
-
-POST   /api/v1/chats/{chatId}/questions
+POST   /api/v1/questions/submission
 GET    /api/v1/answers/{answerId}
 GET    /api/v1/answers/{answerId}/events
 POST   /api/v1/answers/{answerId}/cancellation
 POST   /api/v1/answers/{answerId}/regenerations
-PUT    /api/v1/answers/{answerId}/feedback
+POST   /api/v1/answers/{answerId}/feedback
 ```
+
+一期不注册文件 API。后续阶段若重新启用文件能力，再评审 `/files/upload`、`/files`、`/files/{fileId}` 和 `/files/{fileId}/deletion` 等预留路径。
 
 ### 11.2 通用契约
 

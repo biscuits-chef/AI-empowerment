@@ -3,6 +3,7 @@ package com.acme.intelligentqa.adapter.in.web;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -13,6 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.acme.intelligentqa.common.error.IdempotencyConflictException;
 import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
+import com.acme.intelligentqa.domain.model.Conversation;
+import com.acme.intelligentqa.domain.model.QuestionSubmission;
 import com.acme.intelligentqa.domain.port.in.AnswerCancellationUseCase;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import java.security.Principal;
@@ -70,23 +73,78 @@ class QuestionAnswerControllerTest {
         final AnswerSnapshot answer = new AnswerSnapshot(
                 answerId, chatId, questionId, traceId, null,
                 AnswerSnapshot.Status.PENDING, "", null, now, null);
-        when(useCase.submit(
-                eq("user-1"), eq(chatId), eq(AgentType.SMART_DATA), eq("问题"),
-                anyList(), eq("request-1"))).thenReturn(answer);
+        final Conversation conversation = new Conversation(
+                chatId, "user-1", "问题", now, now);
+        when(useCase.submitQuestion(
+                eq("user-1"), isNull(), eq(AgentType.SMART_DATA), eq("问题"),
+                anyList(), eq("request-1"))).thenReturn(
+                        new QuestionSubmission(conversation, answer, true));
         final Principal principal = () -> "user-1";
 
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", chatId)
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .principal(principal)
                         .header("Idempotency-Key", "request-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"chatId\":null,\"agentType\":\"SMART_DATA\",\"question\":\"问题\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(header().string("Location", "/api/v1/answers/" + answerId + "/events"))
+                .andExpect(jsonPath("$.conversation.id").value(chatId.toString()))
+                .andExpect(jsonPath("$.conversationCreated").value(true))
+                .andExpect(jsonPath("$.answer.answerId").value(answerId.toString()))
+                .andExpect(jsonPath("$.answer.traceId").value(traceId.toString()))
+                .andExpect(jsonPath("$.answer.status").value("PENDING"));
+    }
+
+    /**
+     * 验证已有会话的后续提问可以省略 Agent 类型。
+     *
+     * @throws Exception 请求执行失败时抛出。
+     */
+    @Test
+    void acceptsFollowUpWithoutAgentType() throws Exception {
+        final UUID chatId = UUID.randomUUID();
+        final UUID answerId = UUID.randomUUID();
+        final Instant now = Instant.parse("2026-08-19T01:00:00Z");
+        final AnswerSnapshot answer = new AnswerSnapshot(
+                answerId, chatId, UUID.randomUUID(), UUID.randomUUID(), null,
+                AnswerSnapshot.Status.PENDING, "", null, now, null);
+        final Conversation conversation = new Conversation(
+                chatId, "user-1", "已有会话", AgentType.SMART_DATA, now, now);
+        when(useCase.submitQuestion(
+                eq("user-1"), eq(chatId), isNull(), eq("继续提问"),
+                anyList(), eq("follow-up-1"))).thenReturn(
+                        new QuestionSubmission(conversation, answer, false));
+
+        mockMvc.perform(post("/api/v1/questions/submission")
+                        .principal((Principal) () -> "user-1")
+                        .header("Idempotency-Key", "follow-up-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"chatId\":\"" + chatId + "\",\"question\":\"继续提问\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.conversationCreated").value(false))
+                .andExpect(jsonPath("$.answer.answerId").value(answerId.toString()));
+    }
+
+    /**
+     * 验证第一阶段拒绝在问题请求中携带文件引用。
+     *
+     * @throws Exception 当请求执行失败时抛出。
+     */
+    @Test
+    void rejectsFileReferencesInPhaseOne() throws Exception {
+        final Principal principal = () -> "user-1";
+        when(useCase.submitQuestion(any(), any(), any(), any(), anyList(), any()))
+                .thenThrow(new AssertionError("must not be called"));
+
+        mockMvc.perform(post("/api/v1/questions/submission")
+                        .principal(principal)
+                        .header("Idempotency-Key", "request-with-file")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"agentType\":\"SMART_DATA\",\"question\":\"问题\",\"files\":["
                                 + "{\"fileId\":\"00000000-0000-0000-0000-000000000001\","
                                 + "\"usage\":\"QUERY_INPUT\"}]}"))
-                .andExpect(status().isAccepted())
-                .andExpect(header().string("Location", "/api/v1/answers/" + answerId + "/events"))
-                .andExpect(jsonPath("$.answerId").value(answerId.toString()))
-                .andExpect(jsonPath("$.traceId").value(traceId.toString()))
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
     /**
@@ -96,7 +154,7 @@ class QuestionAnswerControllerTest {
      */
     @Test
     void rejectsMissingAuthentication() throws Exception {
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", UUID.randomUUID())
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .header("Idempotency-Key", "request-1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"agentType\":\"SMART_DATA\",\"question\":\"问题\"}"))
@@ -115,10 +173,10 @@ class QuestionAnswerControllerTest {
     @Test
     void validatesQuestionBody() throws Exception {
         final Principal principal = () -> "user-1";
-        when(useCase.submit(any(), any(), any(), any(), anyList(), any()))
+        when(useCase.submitQuestion(any(), any(), any(), any(), anyList(), any()))
                 .thenThrow(new AssertionError("must not be called"));
 
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", UUID.randomUUID())
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .principal(principal)
                         .header("Idempotency-Key", "request-1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -127,13 +185,13 @@ class QuestionAnswerControllerTest {
     }
 
     /**
-     * 验证提交问题必须携带前端选择的 Agent 类型。
+     * 验证首次提问必须携带前端选择的 Agent 类型。
      *
      * @throws Exception 当输入、状态或依赖调用不满足执行条件时抛出。
      */
     @Test
-    void rejectsMissingAgentType() throws Exception {
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", UUID.randomUUID())
+    void rejectsMissingAgentTypeForNewConversation() throws Exception {
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .principal((Principal) () -> "user-1")
                         .header("Idempotency-Key", "request-1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +206,7 @@ class QuestionAnswerControllerTest {
      */
     @Test
     void rejectsUnknownAgentType() throws Exception {
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", UUID.randomUUID())
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .principal((Principal) () -> "user-1")
                         .header("Idempotency-Key", "request-1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -167,10 +225,10 @@ class QuestionAnswerControllerTest {
      */
     @Test
     void returnsStableProblemForIdempotencyConflict() throws Exception {
-        when(useCase.submit(any(), any(), any(), any(), anyList(), any()))
+        when(useCase.submitQuestion(any(), any(), any(), any(), anyList(), any()))
                 .thenThrow(new IdempotencyConflictException());
 
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", UUID.randomUUID())
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .principal((Principal) () -> "user-1")
                         .header("Idempotency-Key", "request-1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -189,7 +247,7 @@ class QuestionAnswerControllerTest {
      */
     @Test
     void hidesParserDetailsForMalformedRequestBody() throws Exception {
-        mockMvc.perform(post("/api/v1/chats/{chatId}/questions", UUID.randomUUID())
+        mockMvc.perform(post("/api/v1/questions/submission")
                         .principal((Principal) () -> "user-1")
                         .header("Idempotency-Key", "request-1")
                         .contentType(MediaType.APPLICATION_JSON)

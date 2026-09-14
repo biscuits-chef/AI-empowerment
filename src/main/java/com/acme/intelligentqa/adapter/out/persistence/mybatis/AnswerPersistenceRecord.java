@@ -11,11 +11,14 @@ import java.time.Instant;
 @TableName("qa_answer")
 public class AnswerPersistenceRecord {
 
+    /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     /**
-     * 唯一标识。
+     * 对外稳定 UUID 标识。
      */
-    @TableId(type = IdType.INPUT)
-    private String id;
+    @TableField("public_id")
+    private String publicId;
     /**
      * 会话 ID。
      */
@@ -46,6 +49,11 @@ public class AnswerPersistenceRecord {
      */
     @TableField("regenerated_from_answer_id")
     private String regeneratedFromAnswerId;
+    /**
+     * 公司 HiAgent 应用会话 ID。
+     */
+    @TableField("app_conversation_id")
+    private String appConversationId;
     /**
      * 业务状态。
      */
@@ -82,8 +90,42 @@ public class AnswerPersistenceRecord {
     /**
      * 公司模型侧消息 ID。
      */
-    @TableField("provider_message_id")
-    private String providerMessageId;
+    @TableField("message_id")
+    private String messageId;
+    /**
+     * 公司 HiAgent 查询 ID。
+     */
+    @TableField("query_id")
+    private String queryId;
+    /**
+     * 公司 HiAgent 任务 ID。
+     */
+    @TableField("task_id")
+    private String taskId;
+    /**
+     * 公司 HiAgent 回答消耗的令牌总数。
+     */
+    @TableField("total_tokens")
+    private Integer totalTokens;
+    /**
+     * 公司 HiAgent 回答耗时，单位为秒。
+     */
+    private Double latency;
+    /**
+     * 公司 HiAgent 链路追踪 JSON 字符串。
+     */
+    @TableField("tracing_json_str")
+    private String tracingJsonStr;
+    /**
+     * 公司 HiAgent 意图识别 JSON 字符串。
+     */
+    @TableField("intention_json_str")
+    private String intentionJsonStr;
+    /**
+     * 公司 HiAgent 回答是否使用了检索资源。
+     */
+    @TableField("retriever_resource")
+    private Boolean retrieverResource;
     /**
      * 停止失败错误码。
      */
@@ -100,18 +142,22 @@ public class AnswerPersistenceRecord {
     @TableField("cancelled_at")
     private Timestamp cancelledAt;
 
+    /** @return 数据库内部自增主键。 */
+    public Long getId() { return id; }
+    /** @param value 数据库内部自增主键。 */
+    public void setId(final Long value) { this.id = value; }
     /**
-     * 返回唯一标识。
+     * 返回对外稳定 UUID 标识。
      *
-     * @return 唯一标识。
+     * @return 对外稳定 UUID 标识。
      */
-    public String getId() { return id; }
+    public String getPublicId() { return publicId; }
     /**
-     * 设置唯一标识。
+     * 设置对外稳定 UUID 标识。
      *
-     * @param id 唯一标识。
+     * @param value 对外稳定 UUID 标识。
      */
-    public void setId(final String id) { this.id = id; }
+    public void setPublicId(final String value) { this.publicId = value; }
     /**
      * 返回会话 ID。
      *
@@ -184,6 +230,18 @@ public class AnswerPersistenceRecord {
      * @param value 输入值。
      */
     public void setRegeneratedFromAnswerId(final String value) { this.regeneratedFromAnswerId = value; }
+    /**
+     * 返回公司 HiAgent 应用会话 ID。
+     *
+     * @return 公司 HiAgent 应用会话 ID。
+     */
+    public String getAppConversationId() { return appConversationId; }
+    /**
+     * 设置公司 HiAgent 应用会话 ID。
+     *
+     * @param value 公司 HiAgent 应用会话 ID。
+     */
+    public void setAppConversationId(final String value) { this.appConversationId = value; }
     /**
      * 返回HTTP 或回答状态。
      *
@@ -273,13 +331,97 @@ public class AnswerPersistenceRecord {
      *
      * @return 公司模型侧消息 ID。
      */
-    public String getProviderMessageId() { return providerMessageId; }
+    public String getMessageId() { return messageId; }
     /**
      * 设置公司模型侧消息 ID。
      *
      * @param value 输入值。
      */
-    public void setProviderMessageId(final String value) { this.providerMessageId = value; }
+    public void setMessageId(final String value) { this.messageId = value; }
+    /**
+     * 返回公司 HiAgent 查询 ID。
+     *
+     * @return 公司 HiAgent 查询 ID。
+     */
+    public String getQueryId() { return queryId; }
+    /**
+     * 设置公司 HiAgent 查询 ID。
+     *
+     * @param value 公司 HiAgent 查询 ID。
+     */
+    public void setQueryId(final String value) { this.queryId = value; }
+    /**
+     * 返回公司 HiAgent 任务 ID。
+     *
+     * @return 公司 HiAgent 任务 ID。
+     */
+    public String getTaskId() { return taskId; }
+    /**
+     * 设置公司 HiAgent 任务 ID。
+     *
+     * @param value 公司 HiAgent 任务 ID。
+     */
+    public void setTaskId(final String value) { this.taskId = value; }
+    /**
+     * 返回公司 HiAgent 回答消耗的令牌总数。
+     *
+     * @return 公司 HiAgent 回答消耗的令牌总数。
+     */
+    public Integer getTotalTokens() { return totalTokens; }
+    /**
+     * 设置公司 HiAgent 回答消耗的令牌总数。
+     *
+     * @param value 公司 HiAgent 回答消耗的令牌总数。
+     */
+    public void setTotalTokens(final Integer value) { this.totalTokens = value; }
+    /**
+     * 返回公司 HiAgent 回答耗时。
+     *
+     * @return 公司 HiAgent 回答耗时，单位为秒。
+     */
+    public Double getLatency() { return latency; }
+    /**
+     * 设置公司 HiAgent 回答耗时。
+     *
+     * @param value 公司 HiAgent 回答耗时，单位为秒。
+     */
+    public void setLatency(final Double value) { this.latency = value; }
+    /**
+     * 返回公司 HiAgent 链路追踪 JSON 字符串。
+     *
+     * @return 公司 HiAgent 链路追踪 JSON 字符串。
+     */
+    public String getTracingJsonStr() { return tracingJsonStr; }
+    /**
+     * 设置公司 HiAgent 链路追踪 JSON 字符串。
+     *
+     * @param value 公司 HiAgent 链路追踪 JSON 字符串。
+     */
+    public void setTracingJsonStr(final String value) { this.tracingJsonStr = value; }
+    /**
+     * 返回公司 HiAgent 意图识别 JSON 字符串。
+     *
+     * @return 公司 HiAgent 意图识别 JSON 字符串。
+     */
+    public String getIntentionJsonStr() { return intentionJsonStr; }
+    /**
+     * 设置公司 HiAgent 意图识别 JSON 字符串。
+     *
+     * @param value 公司 HiAgent 意图识别 JSON 字符串。
+     */
+    public void setIntentionJsonStr(final String value) { this.intentionJsonStr = value; }
+    /**
+     * 返回公司 HiAgent 回答是否使用了检索资源。
+     *
+     * @return 公司 HiAgent 回答是否使用了检索资源。
+     */
+    public Boolean getRetrieverResource() { return retrieverResource; }
+    /**
+     * 设置公司 HiAgent 回答是否使用了检索资源。
+     *
+     * @param value 公司 HiAgent 回答是否使用了检索资源。
+     */
+    public void setRetrieverResource(final Boolean value) { this.retrieverResource = value; }
     /**
      * 返回停止失败错误码。
      *

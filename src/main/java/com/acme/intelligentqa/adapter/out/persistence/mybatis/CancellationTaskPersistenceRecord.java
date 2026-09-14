@@ -14,7 +14,7 @@ public class CancellationTaskPersistenceRecord {
     /**
      * 公司模型侧消息 ID。
      */
-    private String providerMessageId;
+    private String messageId;
     /**
      * 停止时所处阶段。
      */
@@ -53,13 +53,13 @@ public class CancellationTaskPersistenceRecord {
      *
      * @return 公司模型侧消息 ID。
      */
-    public String getProviderMessageId() { return providerMessageId; }
+    public String getMessageId() { return messageId; }
     /**
      * 设置公司模型侧消息 ID。
      *
      * @param value 输入值。
      */
-    public void setProviderMessageId(final String value) { this.providerMessageId = value; }
+    public void setMessageId(final String value) { this.messageId = value; }
     /**
      * 返回停止时所处的生成阶段。
      *

@@ -25,7 +25,7 @@
 - `test`、`prod` 固定使用 `corporate`，任何额外配置源尝试启用 `mock` 时拒绝启动；
 - `prod` 固定设置 `app.qa.demo-mode=false`，不能被环境变量改回演示模式；
 - 公司模型启用时必须同时提供已审核的真实 SSE 契约证明开关，否则启动失败；
-- 生产数据库、Redis、公司模型地址和凭据没有代码内默认值，缺失时启动失败。
+- 生产数据库、Flyway 目标版本、Redis、公司模型地址和凭据没有代码内默认值，缺失时启动失败。
 
 ## 开发环境
 
@@ -81,6 +81,7 @@ SPRING_PROFILES_ACTIVE=prod
 PROD_DB_URL
 PROD_DB_USERNAME
 PROD_DB_PASSWORD
+PROD_FLYWAY_TARGET
 PROD_REDIS_HOST
 PROD_REDIS_PASSWORD
 PROD_COMPANY_MODEL_BASE_URL
@@ -88,7 +89,7 @@ PROD_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED
 PROD_BUSINESS_QUERY_ENABLED
 ```
 
-生产环境固定启用公司模型和 Redis 配置、固定关闭演示模式，并强制使用公司统一认证。`PROD_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED` 没有默认放行值；只有真实脱敏 SSE 样例已经固化为契约测试且通过责任人审查时才可设为 `true`。当前公司认证适配器、生产 Redis 事件适配器、知识库和受控业务查询仍属于发布阻塞项；配置文件分离和开发模拟用户不代表服务已经达到生产就绪。
+生产环境固定启用公司模型和 Redis 配置、固定关闭演示模式，并强制使用公司统一认证。`PROD_FLYWAY_TARGET` 对本版本必须显式设为 `20`，但只能在停写、任务排空、备份和目标 GoldenDB 演练均通过的维护窗口使用；缺失该变量时拒绝启动，不能用默认值绕过迁移确认。`PROD_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED` 没有默认放行值；只有真实脱敏 SSE 样例已经固化为契约测试且通过责任人审查时才可设为 `true`。当前公司认证适配器、生产 Redis 事件适配器、知识库和受控业务查询仍属于发布阻塞项；配置文件分离和开发模拟用户不代表服务已经达到生产就绪。
 
 ## 公共调优变量
 
@@ -117,6 +118,7 @@ GET /actuator/info
 
 1. 使用同一构建产物从测试环境晋级到生产环境。
 2. 审查 Profile、变量前缀、密钥引用和外部地址，禁止跨环境混用。
-3. 先验证 `/actuator/info` 环境标识，再执行数据库迁移和业务冒烟测试。
-4. 确认日志、指标、Trace 和告警均带有正确环境标签。
-5. 生产发布不得使用 `dev` 或 `test` Profile，也不得通过额外配置源覆盖 `app.runtime.stage`。
+3. 在维护窗口冻结写流量、排空任务并取得一致性备份；经 DBA 批准后按 V8～V17 逐版本迁移和核验。
+4. 使用只认识新 Schema 的应用启动，再验证 `/actuator/info` 环境标识和业务冒烟；不得让旧、新应用普通滚动混跑。
+5. 确认日志、指标、Trace 和告警均带有正确环境标签。
+6. 生产发布不得使用 `dev` 或 `test` Profile，也不得通过额外配置源覆盖 `app.runtime.stage`。

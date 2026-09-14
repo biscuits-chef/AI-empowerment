@@ -56,7 +56,7 @@ public class MybatisPlusAnswerEventRepository implements AnswerEventHistoryPort 
         record.setEventData(data);
         record.setOccurredAt(Timestamp.from(occurredAt));
         final int affected = execute(() -> mapper.insert(record), "failed to append answer event");
-        if (affected != 1 || record.getEventId() == null) {
+        if (affected != 1 || record.getId() == null) {
             throw new PersistenceOperationException(
                     "failed to append answer event",
                     new IllegalStateException("event id was not generated"));
@@ -146,7 +146,7 @@ public class MybatisPlusAnswerEventRepository implements AnswerEventHistoryPort 
      */
     private static AnswerEvent toDomain(final AnswerEventPersistenceRecord record) {
         return new AnswerEvent(
-                record.getEventId(), record.getEventType(), record.getEventData(), record.occurredAtInstant());
+                record.getId(), record.getEventType(), record.getEventData(), record.occurredAtInstant());
     }
 
     /**

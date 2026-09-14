@@ -122,12 +122,12 @@ public class CancellationDispatcher {
             complete(task.answerId());
             return;
         }
-        if (task.providerMessageId() == null || task.providerMessageId().trim().isEmpty()) {
+        if (task.messageId() == null || task.messageId().trim().isEmpty()) {
             fail(task, MESSAGE_ID_UNAVAILABLE);
             return;
         }
         try {
-            modelCancellation.stop(task.ownerId(), task.providerMessageId());
+            modelCancellation.stop(task.ownerId(), task.messageId());
             complete(task.answerId());
         } catch (final DependencyUnavailableException exception) {
             retryOrFail(task, exception.errorCode());

@@ -98,6 +98,7 @@ class CompanyModelApiClientTest {
                 .andExpect(content().json("{\"UserID\":\"user-1\",\"MessageID\":\"message-1\"}"))
                 .andRespond(withSuccess());
         final AtomicReference<String> messageId = new AtomicReference<>();
+        final AtomicReference<String> appConversationId = new AtomicReference<>();
 
         client.generate(request("user-1"), value -> { }, new LanguageModelPort.GenerationControl() {
             /**
@@ -107,15 +108,24 @@ class CompanyModelApiClientTest {
              */
             @Override public boolean isCancellationRequested() { return false; }
             /**
+             * 持久化公司 HiAgent 应用会话 ID。
+             *
+             * @param value 公司 HiAgent 应用会话 ID。
+             */
+            @Override public void onAppConversationId(final String value) {
+                appConversationId.set(value);
+            }
+            /**
              * 持久化公司模型消息 ID 并唤醒停止任务。
              *
              * @param value 输入值。
              */
-            @Override public void onProviderMessageId(final String value) { messageId.set(value); }
+            @Override public void onMessageId(final String value) { messageId.set(value); }
         });
         client.stopMessage("user-1", messageId.get());
 
         assertEquals("message-1", messageId.get());
+        assertEquals("conversation-1", appConversationId.get());
         server.verify();
     }
 

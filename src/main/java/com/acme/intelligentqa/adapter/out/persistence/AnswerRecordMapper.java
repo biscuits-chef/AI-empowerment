@@ -25,7 +25,7 @@ final class AnswerRecordMapper {
     static AnswerSnapshot toDomain(final AnswerPersistenceRecord record) {
         final String regeneratedFrom = record.getRegeneratedFromAnswerId();
         return new AnswerSnapshot(
-                UUID.fromString(record.getId()),
+                UUID.fromString(record.getPublicId()),
                 UUID.fromString(record.getConversationId()),
                 UUID.fromString(record.getQuestionId()),
                 UUID.fromString(record.getTraceId()),

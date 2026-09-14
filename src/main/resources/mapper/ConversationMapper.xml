@@ -6,7 +6,9 @@
 
     <resultMap id="conversationResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord">
         <id property="id" column="id"/>
+        <result property="publicId" column="public_id"/>
         <result property="ownerId" column="owner_id"/>
+        <result property="agentType" column="agent_type"/>
         <result property="title" column="title"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -14,6 +16,7 @@
 
     <resultMap id="messageResult" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersistenceRecord">
         <id property="id" column="id"/>
+        <result property="publicId" column="public_id"/>
         <result property="conversationId" column="conversation_id"/>
         <result property="answerId" column="answer_id"/>
         <result property="answerStatus" column="answer_status"/>
@@ -33,7 +36,7 @@
     </resultMap>
 
     <sql id="conversationColumns">
-        id, owner_id, title, created_at, updated_at
+        id, public_id, owner_id, agent_type, title, created_at, updated_at
     </sql>
 
     <select id="selectByOwner" resultMap="conversationResult">
@@ -43,17 +46,17 @@
           AND deleted_at IS NULL
         <if test="beforeUpdatedAt != null">
           AND (updated_at &lt; #{beforeUpdatedAt}
-            OR (updated_at = #{beforeUpdatedAt} AND id &lt; #{beforeId}))
+            OR (updated_at = #{beforeUpdatedAt} AND public_id &lt; #{beforeId}))
         </if>
-        ORDER BY updated_at DESC, id DESC
+        ORDER BY updated_at DESC, public_id DESC
         LIMIT #{limit}
     </select>
 
     <select id="countActiveAnswers" resultType="int">
         SELECT COUNT(1)
         FROM qa_answer a
-        INNER JOIN qa_conversation c ON c.id = a.conversation_id
-        WHERE c.id = #{id}
+        INNER JOIN qa_conversation c ON c.public_id = a.conversation_id
+        WHERE c.public_id = #{id}
           AND c.owner_id = #{ownerId}
           AND c.deleted_at IS NULL
           AND a.status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING', 'CANCEL_REQUESTED')
@@ -62,32 +65,32 @@
     <select id="selectActiveForUpdate" resultMap="conversationResult">
         SELECT <include refid="conversationColumns"/>
         FROM qa_conversation
-        WHERE id = #{id}
+        WHERE public_id = #{id}
           AND owner_id = #{ownerId}
           AND deleted_at IS NULL
         FOR UPDATE
     </select>
 
     <select id="selectMessages" resultMap="messageResult">
-        SELECT m.id, m.conversation_id, m.answer_id, a.status AS answer_status,
+        SELECT m.id, m.public_id, m.conversation_id, m.answer_id, a.status AS answer_status,
                m.role, m.content, m.created_at
         FROM qa_message m
-        INNER JOIN qa_conversation c ON c.id = m.conversation_id
-        LEFT JOIN qa_answer a ON a.id = m.answer_id
-        WHERE c.id = #{id}
+        INNER JOIN qa_conversation c ON c.public_id = m.conversation_id
+        LEFT JOIN qa_answer a ON a.public_id = m.answer_id
+        WHERE c.public_id = #{id}
           AND c.owner_id = #{ownerId}
           AND c.deleted_at IS NULL
-        ORDER BY m.created_at DESC, m.id DESC
+        ORDER BY m.created_at DESC, m.public_id DESC
         LIMIT #{limit}
     </select>
 
     <select id="selectMessageAttachments" resultMap="messageAttachmentResult">
-        SELECT qf.question_id AS message_id, f.id AS file_id, f.original_name,
+        SELECT qf.question_id AS message_id, f.public_id AS file_id, f.original_name,
                f.content_type, f.size_bytes, qf.usage_type, f.status
         FROM qa_question_file qf
-        INNER JOIN qa_file f ON f.id = qf.file_id
-        INNER JOIN qa_conversation c ON c.id = f.conversation_id
-        WHERE c.id = #{id}
+        INNER JOIN qa_file f ON f.public_id = qf.file_id
+        INNER JOIN qa_conversation c ON c.public_id = f.conversation_id
+        WHERE c.public_id = #{id}
           AND c.owner_id = #{ownerId}
           AND c.deleted_at IS NULL
           AND f.owner_id = #{ownerId}

@@ -1,6 +1,6 @@
 # ADR-005：使用 MyBatis-Plus 接入 GoldenDB
 
-- 状态：已接受，真实 GoldenDB 待验证
+- 状态：已接受，物理主键部分已被 ADR-015 取代
 - 日期：2026-08-19
 - 负责人：服务团队
 - 决策人：用户指定
@@ -13,7 +13,7 @@
 ## 决策
 
 1. 使用兼容 Spring Boot 2 的 `mybatis-plus-boot-starter` 3.5.17，不再直接引入普通 MyBatis Spring Boot Starter。
-2. 数据表记录使用 `@TableName`、`@TableId(IdType.INPUT)` 和显式字段映射；领域对象不依赖 MyBatis-Plus。
+2. 数据表记录使用 `@TableName`、`@TableId` 和显式字段映射；物理主键策略由 ADR-015 取代，领域对象仍不依赖 MyBatis-Plus。
 3. 单表插入与条件更新使用 `BaseMapper` 和 Lambda Wrapper。
 4. Owner 隔离、逻辑删除、消息联表、幂等读取和有界排序使用显式 XML SQL，以便审查权限条件和查询计划。
 5. Flyway 继续作为唯一表结构迁移入口；本次仅替换访问实现，不修改现有表结构或已执行迁移。

@@ -22,6 +22,10 @@ public final class Conversation {
      */
     private final String title;
     /**
+     * 会话创建时选定且不可变更的 Agent 类型。
+     */
+    private final AgentType agentType;
+    /**
      * 创建时间。
      */
     private final Instant createdAt;
@@ -49,9 +53,30 @@ public final class Conversation {
             final String title,
             final Instant createdAt,
             final Instant updatedAt) {
+        this(id, ownerId, title, AgentType.SMART_DATA, createdAt, updatedAt);
+    }
+
+    /**
+     * 创建包含固定 Agent 类型的会话。
+     *
+     * @param id 唯一标识。
+     * @param ownerId 用户所有者 ID。
+     * @param title 会话名称。
+     * @param agentType 会话创建时选定的 Agent 类型。
+     * @param createdAt 创建时间。
+     * @param updatedAt 更新时间。
+     */
+    public Conversation(
+            final UUID id,
+            final String ownerId,
+            final String title,
+            final AgentType agentType,
+            final Instant createdAt,
+            final Instant updatedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.ownerId = requireText(ownerId, "ownerId");
         this.title = requireText(title, "title");
+        this.agentType = Objects.requireNonNull(agentType, "agentType must not be null");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
     }
@@ -81,6 +106,15 @@ public final class Conversation {
      */
     public String title() {
         return title;
+    }
+
+    /**
+     * 返回会话创建时选定的 Agent 类型。
+     *
+     * @return 不可变更的 Agent 类型。
+     */
+    public AgentType agentType() {
+        return agentType;
     }
 
     /**

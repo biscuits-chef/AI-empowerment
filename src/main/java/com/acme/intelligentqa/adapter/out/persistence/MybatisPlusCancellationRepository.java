@@ -102,7 +102,7 @@ public class MybatisPlusCancellationRepository implements CancellationRepository
         final AnswerPersistenceRecord requested = findRequired(ownerId, answerId);
         final boolean waitingForMessageId = AnswerSnapshot.Status.GENERATING.name()
                 .equals(requested.getCancelledStage())
-                && (current.getProviderMessageId() == null || current.getProviderMessageId().trim().isEmpty());
+                && (current.getMessageId() == null || current.getMessageId().trim().isEmpty());
         final Instant firstDispatch = waitingForMessageId ? messageIdDeadline : requestedAt;
         requireOne(execute(() -> cancellationMapper.insertTask(
                         answerId.toString(), Timestamp.from(firstDispatch), Timestamp.from(requestedAt)),
@@ -128,18 +128,18 @@ public class MybatisPlusCancellationRepository implements CancellationRepository
      *
      * @param answerId 回答 ID。
      *
-     * @param providerMessageId 公司模型侧消息 ID。
+     * @param messageId 公司模型侧消息 ID。
      *
      * @param dispatchAt 本次任务分发时间。
      */
     @Override
     @Transactional
-    public void recordProviderMessageId(
+    public void recordMessageId(
             final UUID answerId,
-            final String providerMessageId,
+            final String messageId,
             final Instant dispatchAt) {
-        final int updated = execute(() -> cancellationMapper.recordProviderMessageId(
-                        answerId.toString(), providerMessageId, Timestamp.from(dispatchAt)),
+        final int updated = execute(() -> cancellationMapper.recordMessageId(
+                        answerId.toString(), messageId, Timestamp.from(dispatchAt)),
                 "failed to record provider message id");
         if (updated > 0) {
             execute(() -> cancellationMapper.wakeTask(answerId.toString(), Timestamp.from(dispatchAt)),
@@ -241,7 +241,7 @@ public class MybatisPlusCancellationRepository implements CancellationRepository
                     new IllegalStateException("claimed task disappeared"));
         }
         return Optional.of(new Task(
-                UUID.fromString(record.getAnswerId()), record.getOwnerId(), record.getProviderMessageId(),
+                UUID.fromString(record.getAnswerId()), record.getOwnerId(), record.getMessageId(),
                 record.getCancelledStage(), record.getAttemptCount()));
     }
 

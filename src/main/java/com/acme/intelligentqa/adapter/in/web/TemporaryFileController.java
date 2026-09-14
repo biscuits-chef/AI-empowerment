@@ -11,10 +11,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/v1/chats/{chatId}/files")
+@ConditionalOnProperty(prefix = "app.file", name = "upload-enabled", havingValue = "true")
 public class TemporaryFileController {
 
     /** 临时文件用例。 */
@@ -54,7 +55,7 @@ public class TemporaryFileController {
      * @param usage 文件默认使用角色。
      * @return 已创建文件元数据。
      */
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<TemporaryFileResponse> upload(
             final Principal principal,
             @PathVariable final UUID chatId,
@@ -95,7 +96,7 @@ public class TemporaryFileController {
      * @param fileId 文件 ID。
      * @return 无响应体的删除结果。
      */
-    @DeleteMapping("/{fileId}")
+    @PostMapping("/{fileId}/deletion")
     public ResponseEntity<Void> delete(
             final Principal principal,
             @PathVariable final UUID chatId,

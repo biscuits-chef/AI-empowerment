@@ -6,6 +6,7 @@ import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersis
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.MessageAttachmentPersistenceRecord;
 import com.acme.intelligentqa.common.error.PersistenceOperationException;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
+import com.acme.intelligentqa.domain.model.AgentType;
 import com.acme.intelligentqa.domain.model.ChatMessage;
 import com.acme.intelligentqa.domain.model.Conversation;
 import com.acme.intelligentqa.domain.model.MessageAttachment;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -63,15 +65,64 @@ public class MybatisPlusConversationRepository implements ConversationRepository
      */
     @Override
     public Conversation create(final UUID id, final String ownerId, final String title, final Instant now) {
-        final ConversationPersistenceRecord record = new ConversationPersistenceRecord();
-        record.setId(id.toString());
-        record.setOwnerId(ownerId);
-        record.setTitle(title);
-        record.setCreatedAt(Timestamp.from(now));
-        record.setUpdatedAt(Timestamp.from(now));
+        final ConversationPersistenceRecord record = record(
+                id, ownerId, title, AgentType.SMART_DATA, null, now);
         requireOne(execute(() -> conversationMapper.insert(record), "failed to create conversation"),
                 "failed to create conversation");
-        return new Conversation(id, ownerId, title, now, now);
+        return new Conversation(id, ownerId, title, AgentType.SMART_DATA, now, now);
+    }
+
+    /**
+     * 按首次提问幂等键创建会话，唯一键竞争时返回已经创建的同一会话。
+     *
+     * @param id 新会话唯一标识。
+     * @param ownerId 用户所有者 ID。
+     * @param title 会话名称。
+     * @param agentType 会话创建时选定且不可变更的 Agent 类型。
+     * @param idempotencyKey 首次提问幂等键。
+     * @param now 当前时间。
+     * @return 新创建或已经存在的同一幂等会话。
+     */
+    @Override
+    public Conversation createForQuestion(
+            final UUID id,
+            final String ownerId,
+            final String title,
+            final AgentType agentType,
+            final String idempotencyKey,
+            final Instant now) {
+        final ConversationPersistenceRecord record = record(
+                id, ownerId, title, agentType, idempotencyKey, now);
+        try {
+            requireOne(conversationMapper.insert(record), "failed to create question conversation");
+            return new Conversation(id, ownerId, title, agentType, now, now);
+        } catch (final DuplicateKeyException exception) {
+            return findActiveByCreationKey(ownerId, idempotencyKey)
+                    .orElseThrow(() -> new PersistenceOperationException(
+                            "duplicate question conversation could not be read", exception));
+        } catch (final DataAccessException exception) {
+            throw new PersistenceOperationException("failed to create question conversation", exception);
+        }
+    }
+
+    /**
+     * 按用户和首次提问幂等键查找未删除会话。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param idempotencyKey 首次提问幂等键。
+     * @return 匹配的未删除会话。
+     */
+    @Override
+    public Optional<Conversation> findActiveByCreationKey(
+            final String ownerId,
+            final String idempotencyKey) {
+        final ConversationPersistenceRecord record = execute(
+                () -> conversationMapper.selectOne(new LambdaQueryWrapper<ConversationPersistenceRecord>()
+                        .eq(ConversationPersistenceRecord::getOwnerId, ownerId)
+                        .eq(ConversationPersistenceRecord::getCreationIdempotencyKey, idempotencyKey)
+                        .isNull(ConversationPersistenceRecord::getDeletedAt)),
+                "failed to find question conversation by idempotency key");
+        return Optional.ofNullable(record).map(MybatisPlusConversationRepository::toDomain);
     }
 
     /**
@@ -130,7 +181,7 @@ public class MybatisPlusConversationRepository implements ConversationRepository
     public Optional<Conversation> findActive(final String ownerId, final UUID conversationId) {
         final LambdaQueryWrapper<ConversationPersistenceRecord> query =
                 new LambdaQueryWrapper<ConversationPersistenceRecord>()
-                        .eq(ConversationPersistenceRecord::getId, conversationId.toString())
+                        .eq(ConversationPersistenceRecord::getPublicId, conversationId.toString())
                         .eq(ConversationPersistenceRecord::getOwnerId, ownerId)
                         .isNull(ConversationPersistenceRecord::getDeletedAt);
         return Optional.ofNullable(execute(
@@ -179,7 +230,7 @@ public class MybatisPlusConversationRepository implements ConversationRepository
         final List<ChatMessage> messages = new ArrayList<>(records.size());
         for (final ChatMessagePersistenceRecord record : records) {
             messages.add(toDomain(record, attachmentsByMessage.getOrDefault(
-                    record.getId(), Collections.<MessageAttachment>emptyList())));
+                    record.getPublicId(), Collections.<MessageAttachment>emptyList())));
         }
         return messages;
     }
@@ -247,7 +298,7 @@ public class MybatisPlusConversationRepository implements ConversationRepository
             final String ownerId,
             final UUID conversationId) {
         return new LambdaUpdateWrapper<ConversationPersistenceRecord>()
-                .eq(ConversationPersistenceRecord::getId, conversationId.toString())
+                .eq(ConversationPersistenceRecord::getPublicId, conversationId.toString())
                 .eq(ConversationPersistenceRecord::getOwnerId, ownerId)
                 .isNull(ConversationPersistenceRecord::getDeletedAt);
     }
@@ -284,6 +335,35 @@ public class MybatisPlusConversationRepository implements ConversationRepository
     }
 
     /**
+     * 组装待插入的会话持久化记录。
+     *
+     * @param id 会话唯一标识。
+     * @param ownerId 用户所有者 ID。
+     * @param title 会话名称。
+     * @param agentType 会话创建时选定且不可变更的 Agent 类型。
+     * @param creationIdempotencyKey 首次提问幂等键；普通创建时为空。
+     * @param now 当前时间。
+     * @return 待插入的会话持久化记录。
+     */
+    private static ConversationPersistenceRecord record(
+            final UUID id,
+            final String ownerId,
+            final String title,
+            final AgentType agentType,
+            final String creationIdempotencyKey,
+            final Instant now) {
+        final ConversationPersistenceRecord record = new ConversationPersistenceRecord();
+        record.setPublicId(id.toString());
+        record.setOwnerId(ownerId);
+        record.setCreationIdempotencyKey(creationIdempotencyKey);
+        record.setAgentType(agentType.name());
+        record.setTitle(title);
+        record.setCreatedAt(Timestamp.from(now));
+        record.setUpdatedAt(Timestamp.from(now));
+        return record;
+    }
+
+    /**
      * 将数据库记录转换为领域对象。
      *
      * @param record 持久化记录。
@@ -292,9 +372,10 @@ public class MybatisPlusConversationRepository implements ConversationRepository
      */
     private static Conversation toDomain(final ConversationPersistenceRecord record) {
         return new Conversation(
-                UUID.fromString(record.getId()),
+                UUID.fromString(record.getPublicId()),
                 record.getOwnerId(),
                 record.getTitle(),
+                AgentType.valueOf(record.getAgentType()),
                 record.createdAtInstant(),
                 record.updatedAtInstant());
     }
@@ -314,7 +395,7 @@ public class MybatisPlusConversationRepository implements ConversationRepository
         final String answerId = record.getAnswerId();
         final String answerStatus = record.getAnswerStatus();
         return new ChatMessage(
-                UUID.fromString(record.getId()),
+                UUID.fromString(record.getPublicId()),
                 UUID.fromString(record.getConversationId()),
                 answerId == null ? null : UUID.fromString(answerId),
                 answerStatus == null ? null : AnswerSnapshot.Status.valueOf(answerStatus),
@@ -339,7 +420,7 @@ public class MybatisPlusConversationRepository implements ConversationRepository
         final List<String> userMessageIds = new ArrayList<>();
         for (final ChatMessagePersistenceRecord message : messages) {
             if (ChatMessage.Role.USER.name().equals(message.getRole())) {
-                userMessageIds.add(message.getId());
+                userMessageIds.add(message.getPublicId());
             }
         }
         if (userMessageIds.isEmpty()) {

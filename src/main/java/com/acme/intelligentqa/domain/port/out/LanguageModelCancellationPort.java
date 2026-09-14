@@ -10,7 +10,7 @@ public interface LanguageModelCancellationPort {
      *
      * @param ownerId 用户所有者 ID。
      *
-     * @param providerMessageId 公司模型侧消息 ID。
+     * @param messageId 公司模型侧消息 ID。
      */
-    void stop(String ownerId, String providerMessageId);
+    void stop(String ownerId, String messageId);
 }

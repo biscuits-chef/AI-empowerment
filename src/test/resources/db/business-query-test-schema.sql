@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS test_business_trade;
 DROP TABLE IF EXISTS dws_product_info_d;
 
 CREATE TABLE dws_product_info_d (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     PRDC_CD VARCHAR(80) NOT NULL,
     PRDC_NM VARCHAR(255),
     PRDC_ABBR VARCHAR(255),
@@ -14,10 +15,11 @@ CREATE TABLE dws_product_info_d (
     PROD_MAT_DT VARCHAR(10),
     PERI_OPEN_BASE_DT VARCHAR(10),
     DT VARCHAR(10) NOT NULL,
-    PRIMARY KEY (PRDC_CD, DT)
+    CONSTRAINT uk_dws_product_info_code_snapshot UNIQUE (PRDC_CD, DT)
 );
 
 CREATE TABLE test_business_trade (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     authorized_user_id VARCHAR(128) NOT NULL,
     trade_serial_number VARCHAR(64) NOT NULL,
     product_code VARCHAR(64) NOT NULL,
@@ -28,7 +30,11 @@ CREATE TABLE test_business_trade (
 
 CREATE VIEW biz_semantic_trade_v AS SELECT * FROM test_business_trade;
 
-INSERT INTO dws_product_info_d VALUES
+INSERT INTO dws_product_info_d (
+    PRDC_CD, PRDC_NM, PRDC_ABBR, PRDC_FLL_NM, PRDC_MNGR_NM,
+    INVS_MNGR_NM, PRDC_INVS_MNGR, PRDC_FRM, PROD_MAT_DT,
+    PERI_OPEN_BASE_DT, DT
+) VALUES
 ('P001', '悦享3号', '悦享三号', '悦享3号固定收益类理财产品', '旧产品经理',
  '旧监管投资经理', '旧产品部投资经理', '封闭式', '2026-12-31', NULL, '2026-09-01'),
 ('P001', '悦享3号', '悦享三号', '悦享3号固定收益类理财产品', '产品经理甲',
@@ -44,6 +50,9 @@ INSERT INTO dws_product_info_d VALUES
 ('P001', '悦享3号', '悦享三号', '悦享3号固定收益类理财产品', '未来产品经理',
  '未来监管投资经理', '未来产品部投资经理', '封闭式', '2026-12-31', NULL, '2026-09-09');
 
-INSERT INTO test_business_trade VALUES
+INSERT INTO test_business_trade (
+    authorized_user_id, trade_serial_number, product_code,
+    trader_name, trade_date, updated_at
+) VALUES
 ('user-a', 'T001', 'P001', '交易员甲', DATE '2026-08-01', CURRENT_TIMESTAMP),
 ('user-b', 'T001', 'P001', '交易员乙', DATE '2026-08-01', CURRENT_TIMESTAMP);

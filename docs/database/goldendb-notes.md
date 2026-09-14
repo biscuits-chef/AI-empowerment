@@ -7,10 +7,10 @@
 - GoldenDB 产品版本、精确版本号、兼容模式、拓扑、可用区及故障切换策略；
 - 受支持的连接器，以及 TLS/认证设置；
 - MyBatis-Plus 生成的插入/更新 SQL、XML 联表 SQL、`ON DUPLICATE KEY UPDATE` 和 `TIMESTAMP(6)` 的兼容性；
-- 分布/分片 Key 规则、同置表、全局索引、序列/自增行为；
+- 分布/分片 Key 规则、同置表、全局索引，以及所有表 `id BIGINT AUTO_INCREMENT` 的序列、自增和热点行为；
 - 支持的 DDL/DML、在线表结构变更约束、事务/隔离/锁行为；
 - 使用有代表性的统计信息和数据量，为每条关键查询保留执行计划；
-- 一期 `dws_product_info_d` 的复合主键、日期字符串、产品解析索引、产品数据权限和固定参数化 SQL 兼容性；
+- 一期 `dws_product_info_d` 的自增 `id` 主键、`PRDC_CD + DT` 业务唯一键、日期字符串、产品解析索引、产品数据权限和固定参数化 SQL 兼容性；
 - 兼容保留的 `biz_semantic_trade_v` 字段、权限和索引；
 - 连接/会话上限、全部副本的 HikariCP 预算、语句/请求截止时间；
 - 备份、恢复、PITR、复制、RPO、RTO、容量、监控和运维责任人；
@@ -19,6 +19,34 @@
 绝不编辑已经执行的 Flyway 迁移。新增带版本号的迁移，并在滚动发布全过程保持兼容。
 
 Flyway 创建 `dws_product_info_d` 空表和索引，数据中台负责同步完整业务快照；兼容交易语义视图仍由数据平台维护。字段契约、权限规则和启用门禁见 `phase-one-business-semantic-query.md`。
+
+## V8～V17 统一 id 自增主键验证
+
+所有表最终必须且只能使用 `id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY`，不得存在 `pk_id`，UUID 和复合业务键只保留为普通唯一业务字段。四张资源表的旧 UUID `id` 改名为 `public_id`；事件表的 `event_id` 保留原值并改名为 `id`。
+
+Java 持久化 Record 必须以数据库列为准按小驼峰命名：去掉下划线，并将下划线后的首字母大写，例如 `public_id -> publicId`、`message_id -> messageId`。物理列 `id` 只能映射为 `id`，不得使用 `databaseId` 等别名；该约束由集成测试扫描 `@TableId`、`@TableField` 和 Mapper ResultMap。
+
+该合同切换不能与旧应用普通滚动混跑。生产必须显式设置 `PROD_FLYWAY_TARGET=17`，并在停写、任务排空和一致性备份后执行。发布前必须在目标 GoldenDB 验证：
+
+- 每张表迁移前后行数、UUID、业务字段和逻辑引用不变，`id` 全部非空、唯一且自增；
+- `public_id` 及反馈、停止任务、上下文、问题文件和产品快照业务唯一键继续拒绝重复；
+- `event_id` 改名后历史数值、最大值和 SSE `Last-Event-ID` 重放边界完全不变；
+- 列改名、主键交换、表和二级索引重建、元数据锁、临时空间与复制延迟符合批准窗口；
+- 分片、主备切换和扩缩容期间自增值全局唯一且 JDBC 生成键回填可靠；
+- 数据中台使用显式列清单并忽略产品表 `id`，完整快照发布和失败重试语义不变；
+- 旧应用不能直接回滚到新结构，已准备兼容回滚版本或完成一致性备份恢复演练。
+
+任一证据缺失均阻塞生产执行；不得用 H2 或 MySQL 风格脚本推断 GoldenDB 兼容性。
+
+## V20 会话 Agent 类型验证
+
+`V20__persist_conversation_agent_type.sql` 为 `qa_conversation` 增加不可空 `agent_type`，默认 `SMART_DATA` 用于兼容历史会话和滚动发布期间的旧应用。发布前必须在目标 GoldenDB 验证：
+
+- 全量历史会话均得到 `SMART_DATA`，没有空值或截断值；
+- 新应用首问显式写入类型，后续问题只读取会话值且不能更新；
+- 新旧应用短暂并存时旧应用插入仍可使用默认值，不影响会话创建幂等唯一键；
+- 加列操作的元数据锁、执行时长、复制延迟和失败前滚符合批准窗口；
+- 后续开放更多 Agent 前，应评审并移除依赖默认值的旧写路径，避免新会话被静默归类为 `SMART_DATA`。
 
 ## V3 消息内容扩容验证
 

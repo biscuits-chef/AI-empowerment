@@ -117,6 +117,7 @@ public final class CompanyModelApiClient {
         validateUserId(request.ownerId());
         try {
             final String appConversationId = createConversation(request.ownerId());
+            control.onAppConversationId(appConversationId);
             final ChatQueryRequest body = new ChatQueryRequest(
                     request.ownerId(), appConversationId, promptFactory.create(request), "streaming", false);
             final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
@@ -325,7 +326,7 @@ public final class CompanyModelApiClient {
             final Consumer<String> consumer,
             final LanguageModelPort.GenerationControl control) throws IOException {
         if (data.length() > 0) {
-            decoder.accept(data.toString(), consumer, control::onProviderMessageId);
+            decoder.accept(data.toString(), consumer, control::onMessageId);
             data.setLength(0);
             if (control.isCancellationRequested()) {
                 throw new com.acme.intelligentqa.common.error.GenerationCancelledException();
