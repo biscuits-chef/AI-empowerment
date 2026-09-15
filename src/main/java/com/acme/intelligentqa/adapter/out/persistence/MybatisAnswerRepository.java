@@ -6,12 +6,10 @@ import com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerPersistenceR
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessageMapper;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationMapper;
-import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord;
 import com.acme.intelligentqa.common.error.PersistenceOperationException;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.out.AnswerRepositoryPort;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -24,10 +22,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 基于 MyBatis-Plus 的回答、消息、反馈和状态持久化适配器。
+ * 基于原生 MyBatis 的回答、消息、反馈和状态持久化适配器。
  */
 @Repository
-public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
+public class MybatisAnswerRepository implements AnswerRepositoryPort {
 
     /**
      * 回答表映射器。
@@ -47,7 +45,7 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
     private final AnswerFeedbackMapper feedbackMapper;
 
     /**
-     * 创建 {@code MybatisPlusAnswerRepository} 实例。
+     * 创建 {@code MybatisAnswerRepository} 实例。
      *
      * @param answerMapper 回答表映射器。
      *
@@ -58,7 +56,7 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
      * @param feedbackMapper 回答反馈 SQL 映射器。
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected mappers are retained and not exposed")
-    public MybatisPlusAnswerRepository(
+    public MybatisAnswerRepository(
             final AnswerMapper answerMapper,
             final ChatMessageMapper messageMapper,
             final ConversationMapper conversationMapper,
@@ -126,13 +124,6 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
                 regeneratedFromAnswerId, idempotencyKey, now);
         try {
             requireOne(answerMapper.insert(answer), "failed to insert answer");
-            requireOne(messageMapper.insert(messageRecord(
-                            questionId, conversationId, null, "USER", question, now)),
-                    "failed to insert question message");
-            requireOne(messageMapper.insert(messageRecord(
-                            answerId, conversationId, answerId, "ASSISTANT", "", now.plusNanos(1000L))),
-                    "failed to insert assistant message");
-            touchConversation(conversationId, now);
         } catch (final DuplicateKeyException exception) {
             return findByIdempotencyKey(ownerId, idempotencyKey)
                     .orElseThrow(() -> new PersistenceOperationException(
@@ -140,6 +131,14 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
         } catch (final DataAccessException exception) {
             throw new PersistenceOperationException("failed to create answer", exception);
         }
+        // 只有回答唯一键竞争可以作为幂等重放；消息写入冲突必须抛出并让事务整体回滚，禁止提交半成品。
+        requireOne(execute(() -> messageMapper.insert(messageRecord(
+                        questionId, conversationId, null, "USER", question, now)),
+                "failed to insert question message"), "failed to insert question message");
+        requireOne(execute(() -> messageMapper.insert(messageRecord(
+                        answerId, conversationId, answerId, "ASSISTANT", "", now.plusNanos(1000L))),
+                "failed to insert assistant message"), "failed to insert assistant message");
+        touchConversation(conversationId, now);
         return AnswerRecordMapper.toDomain(answer);
     }
 
@@ -187,12 +186,8 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
      */
     @Override
     public boolean transitionStatus(final UUID answerId, final AnswerSnapshot.Status status) {
-        final LambdaUpdateWrapper<AnswerPersistenceRecord> update =
-                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
-                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
-                        .in(AnswerPersistenceRecord::getStatus, activeStatuses())
-                        .set(AnswerPersistenceRecord::getStatus, status.name());
-        return execute(() -> answerMapper.update(null, update), "failed to update answer status") == 1;
+        return execute(() -> answerMapper.transitionStatus(answerId.toString(), status.name()),
+                "failed to update answer status") == 1;
     }
 
     /**
@@ -209,19 +204,8 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
         if (appConversationId == null || appConversationId.trim().isEmpty()) {
             throw new IllegalArgumentException("appConversationId must not be blank");
         }
-        final LambdaUpdateWrapper<AnswerPersistenceRecord> update =
-                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
-                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
-                        .in(AnswerPersistenceRecord::getStatus, java.util.Arrays.asList(
-                                AnswerSnapshot.Status.GENERATING.name(),
-                                AnswerSnapshot.Status.CANCEL_REQUESTED.name()))
-                        .and(wrapper -> wrapper
-                                .isNull(AnswerPersistenceRecord::getAppConversationId)
-                                .or()
-                                .eq(AnswerPersistenceRecord::getAppConversationId, appConversationId))
-                        .set(AnswerPersistenceRecord::getAppConversationId, appConversationId);
         return execute(
-                () -> answerMapper.update(null, update),
+                () -> answerMapper.recordAppConversationId(answerId.toString(), appConversationId),
                 "failed to record HiAgent app conversation id") == 1;
     }
 
@@ -237,22 +221,13 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
     @Override
     @Transactional
     public boolean savePartial(final UUID answerId, final String content) {
-        final LambdaUpdateWrapper<AnswerPersistenceRecord> answerUpdate =
-                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
-                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
-                        .eq(AnswerPersistenceRecord::getStatus, AnswerSnapshot.Status.GENERATING.name())
-                        .set(AnswerPersistenceRecord::getContent, content);
         final int updated = execute(
-                () -> answerMapper.update(null, answerUpdate), "failed to save partial answer");
+                () -> answerMapper.savePartial(answerId.toString(), content), "failed to save partial answer");
         if (updated == 0) {
             return false;
         }
-        final LambdaUpdateWrapper<ChatMessagePersistenceRecord> messageUpdate =
-                new LambdaUpdateWrapper<ChatMessagePersistenceRecord>()
-                        .eq(ChatMessagePersistenceRecord::getPublicId, answerId.toString())
-                        .set(ChatMessagePersistenceRecord::getContent, content);
         requireOne(execute(
-                        () -> messageMapper.update(null, messageUpdate),
+                        () -> messageMapper.updateContent(answerId.toString(), content),
                         "failed to save partial answer message"),
                 "failed to save partial answer message");
         return true;
@@ -362,24 +337,14 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
             final String content,
             final String errorCode,
             final Instant completedAt) {
-        final LambdaUpdateWrapper<AnswerPersistenceRecord> answerUpdate =
-                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
-                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
-                        .in(AnswerPersistenceRecord::getStatus, activeStatuses())
-                        .set(AnswerPersistenceRecord::getStatus, status.name())
-                        .set(AnswerPersistenceRecord::getContent, content)
-                        .set(AnswerPersistenceRecord::getErrorCode, errorCode)
-                        .set(AnswerPersistenceRecord::getCompletedAt, Timestamp.from(completedAt));
-        final LambdaUpdateWrapper<ChatMessagePersistenceRecord> messageUpdate =
-                new LambdaUpdateWrapper<ChatMessagePersistenceRecord>()
-                        .eq(ChatMessagePersistenceRecord::getPublicId, answerId.toString())
-                        .set(ChatMessagePersistenceRecord::getContent, content);
-        final int updated = execute(() -> answerMapper.update(null, answerUpdate), "failed to finalize answer");
+        final int updated = execute(() -> answerMapper.finalizeAnswer(
+                answerId.toString(), status.name(), content, errorCode, Timestamp.from(completedAt)),
+                "failed to finalize answer");
         if (updated == 0) {
             return false;
         }
         requireOne(execute(
-                        () -> messageMapper.update(null, messageUpdate),
+                        () -> messageMapper.updateContent(answerId.toString(), content),
                         "failed to finalize answer message"),
                 "failed to finalize answer message");
         return true;
@@ -393,12 +358,10 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
      * @param now 当前时间。
      */
     private void touchConversation(final UUID conversationId, final Instant now) {
-        final LambdaUpdateWrapper<ConversationPersistenceRecord> update =
-                new LambdaUpdateWrapper<ConversationPersistenceRecord>()
-                        .eq(ConversationPersistenceRecord::getPublicId, conversationId.toString())
-                        .isNull(ConversationPersistenceRecord::getDeletedAt)
-                        .set(ConversationPersistenceRecord::getUpdatedAt, Timestamp.from(now));
-        requireOne(conversationMapper.update(null, update), "failed to update conversation timestamp");
+        requireOne(execute(
+                () -> conversationMapper.touch(conversationId.toString(), Timestamp.from(now)),
+                "failed to update conversation timestamp"),
+                "failed to update conversation timestamp");
     }
 
     /**
@@ -524,16 +487,4 @@ public class MybatisPlusAnswerRepository implements AnswerRepositoryPort {
         }
     }
 
-    /**
-     * 处理允许继续生成的非终态集合。
-     *
-     * @return 允许继续生成的非终态集合。
-     */
-    private static java.util.List<String> activeStatuses() {
-        return java.util.Arrays.asList(
-                AnswerSnapshot.Status.PENDING.name(),
-                AnswerSnapshot.Status.RETRIEVING.name(),
-                AnswerSnapshot.Status.QUERYING.name(),
-                AnswerSnapshot.Status.GENERATING.name());
-    }
 }

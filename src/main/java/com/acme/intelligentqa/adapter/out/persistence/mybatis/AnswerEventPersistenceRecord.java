@@ -1,32 +1,22 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import java.sql.Timestamp;
 import java.time.Instant;
 
 /**
  * 与 {@code qa_answer_event} 表对应的持久化记录。
  */
-@TableName("qa_answer_event")
 public class AnswerEventPersistenceRecord {
 
     /** 全局递增事件序号。 */
-    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
     /** 回答 ID。 */
-    @TableField("answer_id")
     private String answerId;
     /** 事件类型。 */
-    @TableField("event_type")
     private String eventType;
     /** 事件数据。 */
-    @TableField("event_data")
     private String eventData;
     /** 事件发生时间。 */
-    @TableField("occurred_at")
     private Timestamp occurredAt;
 
     /** @return 全局递增事件序号。 */

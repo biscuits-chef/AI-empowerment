@@ -12,6 +12,13 @@
         <result property="occurredAt" column="occurred_at"/>
     </resultMap>
 
+    <insert id="insert"
+            parameterType="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerEventPersistenceRecord"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO qa_answer_event (answer_id, event_type, event_data, occurred_at)
+        VALUES (#{answerId}, #{eventType}, #{eventData}, #{occurredAt})
+    </insert>
+
     <select id="selectAfter" resultMap="answerEventResult">
         SELECT id, answer_id, event_type, event_data, occurred_at
         FROM qa_answer_event

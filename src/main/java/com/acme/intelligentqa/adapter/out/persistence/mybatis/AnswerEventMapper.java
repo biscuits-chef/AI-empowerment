@@ -1,15 +1,22 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 /**
- * 回答执行事件表的 MyBatis-Plus 映射器。
+ * 回答执行事件表的原生 MyBatis 映射器。
  */
 @Mapper
-public interface AnswerEventMapper extends BaseMapper<AnswerEventPersistenceRecord> {
+public interface AnswerEventMapper {
+
+    /**
+     * 新增回答事件并回填数据库事件序号。
+     *
+     * @param record 待新增的回答事件记录。
+     * @return 受影响行数。
+     */
+    int insert(AnswerEventPersistenceRecord record);
 
     /**
      * 从指定序号之后读取回答事件。

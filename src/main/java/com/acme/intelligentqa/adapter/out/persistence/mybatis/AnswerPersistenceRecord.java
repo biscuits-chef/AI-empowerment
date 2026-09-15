@@ -1,58 +1,44 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import java.sql.Timestamp;
 import java.time.Instant;
 
 /** 与 {@code qa_answer} 表对应的持久化记录。 */
-@TableName("qa_answer")
 public class AnswerPersistenceRecord {
 
     /** 数据库内部自增主键。 */
-    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
     /**
      * 对外稳定 UUID 标识。
      */
-    @TableField("public_id")
     private String publicId;
     /**
      * 会话 ID。
      */
-    @TableField("conversation_id")
     private String conversationId;
     /**
      * 问题 ID。
      */
-    @TableField("question_id")
     private String questionId;
     /**
      * 用户所有者 ID。
      */
-    @TableField("owner_id")
     private String ownerId;
     /**
      * 幂等键。
      */
-    @TableField("idempotency_key")
     private String idempotencyKey;
     /**
      * 链路追踪 ID。
      */
-    @TableField("trace_id")
     private String traceId;
     /**
      * 原回答 ID。
      */
-    @TableField("regenerated_from_answer_id")
     private String regeneratedFromAnswerId;
     /**
      * 公司 HiAgent 应用会话 ID。
      */
-    @TableField("app_conversation_id")
     private String appConversationId;
     /**
      * 业务状态。
@@ -65,47 +51,38 @@ public class AnswerPersistenceRecord {
     /**
      * 错误码。
      */
-    @TableField("error_code")
     private String errorCode;
     /**
      * 创建时间。
      */
-    @TableField("created_at")
     private Timestamp createdAt;
     /**
      * 完成时间。
      */
-    @TableField("completed_at")
     private Timestamp completedAt;
     /**
      * 停止原因。
      */
-    @TableField("cancel_reason")
     private String cancelReason;
     /**
      * 停止时所处阶段。
      */
-    @TableField("cancelled_stage")
     private String cancelledStage;
     /**
      * 公司模型侧消息 ID。
      */
-    @TableField("message_id")
     private String messageId;
     /**
      * 公司 HiAgent 查询 ID。
      */
-    @TableField("query_id")
     private String queryId;
     /**
      * 公司 HiAgent 任务 ID。
      */
-    @TableField("task_id")
     private String taskId;
     /**
      * 公司 HiAgent 回答消耗的令牌总数。
      */
-    @TableField("total_tokens")
     private Integer totalTokens;
     /**
      * 公司 HiAgent 回答耗时，单位为秒。
@@ -114,32 +91,26 @@ public class AnswerPersistenceRecord {
     /**
      * 公司 HiAgent 链路追踪 JSON 字符串。
      */
-    @TableField("tracing_json_str")
     private String tracingJsonStr;
     /**
      * 公司 HiAgent 意图识别 JSON 字符串。
      */
-    @TableField("intention_json_str")
     private String intentionJsonStr;
     /**
      * 公司 HiAgent 回答是否使用了检索资源。
      */
-    @TableField("retriever_resource")
     private Boolean retrieverResource;
     /**
      * 停止失败错误码。
      */
-    @TableField("cancel_error_code")
     private String cancelErrorCode;
     /**
      * 停止请求时间。
      */
-    @TableField("cancel_requested_at")
     private Timestamp cancelRequestedAt;
     /**
      * 停止完成时间。
      */
-    @TableField("cancelled_at")
     private Timestamp cancelledAt;
 
     /** @return 数据库内部自增主键。 */

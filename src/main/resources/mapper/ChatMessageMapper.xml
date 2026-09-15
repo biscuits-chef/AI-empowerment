@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessageMapper">
+
+    <insert id="insert"
+            parameterType="com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersistenceRecord"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO qa_message
+            (public_id, conversation_id, answer_id, role, content, created_at)
+        VALUES
+            (#{publicId}, #{conversationId}, #{answerId}, #{role}, #{content}, #{createdAt})
+    </insert>
+
+    <update id="updateContent">
+        UPDATE qa_message
+        SET content = #{content}
+        WHERE public_id = #{id}
+    </update>
+
+</mapper>

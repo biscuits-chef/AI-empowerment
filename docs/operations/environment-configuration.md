@@ -12,7 +12,7 @@
 | 测试 | `SPRING_PROFILES_ACTIVE=test` | `application-test.xml` | `TEST` |
 | 生产 | `SPRING_PROFILES_ACTIVE=prod` | `application-prod.xml` | `PRODUCTION` |
 
-`application.xml` 保存公共上限、超时、Jetty、MyBatis-Plus、Flyway 和监控配置。三个环境文件只覆盖连接信息、环境标识、演示模式、依赖开关和端点暴露范围。
+`application.xml` 保存公共上限、超时、Jetty、原生 MyBatis、Flyway 和监控配置。三个环境文件只覆盖连接信息、环境标识、演示模式、依赖开关和端点暴露范围。
 
 四个配置文件均使用 Java 标准 XML Properties 格式：每个配置项写成 `<entry key="配置键">配置值</entry>`。`XmlApplicationEnvironmentPostProcessor` 在 Spring 容器创建前加载并合并文件，因此可以继续使用 Spring 的 `${变量名:默认值}` 占位符。XML 只是属性载体，不用于声明 Spring Bean；项目不再使用 Spring 应用 YAML 配置。
 

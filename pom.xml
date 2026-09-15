@@ -23,7 +23,8 @@
         <javaparser.version>3.25.5</javaparser.version>
         <obs-sdk.version>3.23.9</obs-sdk.version>
         <mysql-connector.version>8.0.33</mysql-connector.version>
-        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <mybatis-spring-boot.version>2.3.2</mybatis-spring-boot.version>
+        <mybatis.version>3.5.19</mybatis.version>
         <checkstyle.version>8.45.1</checkstyle.version>
         <jacoco.version>0.8.12</jacoco.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
@@ -33,6 +34,16 @@
         <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
         <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis</artifactId>
+                <version>${mybatis.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -70,9 +81,9 @@
             <artifactId>jakarta.el</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>${mybatis-plus.version}</version>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>${mybatis-spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -131,9 +142,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter-test</artifactId>
-            <version>${mybatis-plus.version}</version>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter-test</artifactId>
+            <version>${mybatis-spring-boot.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -181,6 +192,7 @@
                                     <excludes>
                                         <exclude>org.springframework.boot:spring-boot-starter-tomcat</exclude>
                                         <exclude>org.apache.tomcat.embed:*</exclude>
+                                        <exclude>com.baomidou:*</exclude>
                                     </excludes>
                                     <searchTransitive>true</searchTransitive>
                                 </bannedDependencies>

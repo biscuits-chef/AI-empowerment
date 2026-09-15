@@ -66,7 +66,7 @@
 | 开发语言 | Java 8 | 现有基线；后续 Agent 编排服务建议使用 JDK 17+ |
 | 应用框架 | Spring Boot 2.7.18 | 使用内嵌 Jetty，不使用 Tomcat |
 | 架构风格 | 六边形架构 | 领域、应用编排、入站适配器、出站适配器分离 |
-| 数据访问 | MyBatis-Plus 3.5.17 + MyBatis XML | 普通单表操作与受控显式 SQL 分工 |
+| 数据访问 | 原生 MyBatis 3.5.19 + MyBatis XML | 全部持久化操作使用具名 Mapper 与受控显式 SQL |
 | 应用与业务数据库 | GoldenDB | 应用库可读写；数据中台业务库只读 |
 | 数据迁移 | Flyway | 仅管理本系统应用表，不管理数据平台语义视图 |
 | 事件与协调 | Redis Stream（目标） | 用于跨实例 SSE 事件、重放和短期协调，不作为最终事实源 |
@@ -105,7 +105,7 @@ domain
      └─ out                仓储、知识库、业务库、模型、事件端口
 application.service          用例编排、事务、幂等、状态转换
 adapter.in.web               REST、SSE、参数校验、错误转换
-adapter.out                  MyBatis-Plus、HiAgent、业务查询、事件流等适配器
+adapter.out                  原生 MyBatis、HiAgent、业务查询、事件流等适配器
 config                       XML 配置绑定和依赖装配
 ```
 

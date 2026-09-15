@@ -22,7 +22,7 @@ import org.springframework.stereotype.Repository;
  * 使用 GoldenDB 持久化回答执行事件和可恢复产物引用。
  */
 @Repository
-public class MybatisPlusAnswerEventRepository implements AnswerEventHistoryPort {
+public class MybatisAnswerEventRepository implements AnswerEventHistoryPort {
 
     /** 回答事件表映射器。 */
     private final AnswerEventMapper mapper;
@@ -33,7 +33,7 @@ public class MybatisPlusAnswerEventRepository implements AnswerEventHistoryPort 
      * @param mapper 回答事件表映射器。
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected mapper is retained and not exposed")
-    public MybatisPlusAnswerEventRepository(final AnswerEventMapper mapper) { this.mapper = mapper; }
+    public MybatisAnswerEventRepository(final AnswerEventMapper mapper) { this.mapper = mapper; }
 
     /**
      * 追加一条回答事件。

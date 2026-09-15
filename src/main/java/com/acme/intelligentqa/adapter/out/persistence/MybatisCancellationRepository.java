@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 基于数据库条件更新实现停止任务租约和并发状态保护。
  */
 @Repository
-public class MybatisPlusCancellationRepository implements CancellationRepositoryPort {
+public class MybatisCancellationRepository implements CancellationRepositoryPort {
 
     /**
      * 回答表映射器。
@@ -39,14 +39,14 @@ public class MybatisPlusCancellationRepository implements CancellationRepository
     private final AnswerCancellationMapper cancellationMapper;
 
     /**
-     * 创建 {@code MybatisPlusCancellationRepository} 实例。
+     * 创建 {@code MybatisCancellationRepository} 实例。
      *
      * @param answerMapper 回答表映射器。
      *
      * @param cancellationMapper 停止任务 SQL 映射器。
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected mappers are retained and not exposed")
-    public MybatisPlusCancellationRepository(
+    public MybatisCancellationRepository(
             final AnswerMapper answerMapper,
             final AnswerCancellationMapper cancellationMapper) {
         this.answerMapper = answerMapper;

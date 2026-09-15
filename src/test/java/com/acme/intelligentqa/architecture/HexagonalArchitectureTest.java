@@ -23,15 +23,17 @@ class HexagonalArchitectureTest {
             .that().resideInAPackage("..domain..")
             .should().dependOnClassesThat()
             .resideInAnyPackage(
-                    "org.springframework..", "javax..", "jakarta..", "..adapter..", "..application..");
+                    "org.springframework..", "org.apache.ibatis..", "org.mybatis..",
+                    "javax..", "jakarta..", "..adapter..", "..application..");
 
     /**
-     * 应用层不得依赖适配器的架构规则。
+     * 应用层不得依赖适配器或持久化框架的架构规则。
      */
     @ArchTest
     static final ArchRule APPLICATION_DOES_NOT_DEPEND_ON_ADAPTERS = noClasses()
             .that().resideInAPackage("..application..")
-            .should().dependOnClassesThat().resideInAPackage("..adapter..");
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "..adapter..", "org.apache.ibatis..", "org.mybatis..");
 
     /**
      * 按基础设施职责命名适配器的架构规则。

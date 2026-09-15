@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.acme.intelligentqa.common.error.AnswerAlreadyTerminalException;
+import com.acme.intelligentqa.common.error.PersistenceOperationException;
 import com.acme.intelligentqa.application.service.ConversationService;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.model.AgentType;
@@ -20,7 +21,7 @@ import com.acme.intelligentqa.domain.model.TemporaryFile;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.in.AnswerCancellationUseCase;
 import com.acme.intelligentqa.domain.port.out.CancellationRepositoryPort;
-import com.baomidou.mybatisplus.test.autoconfigure.MybatisPlusTest;
+import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -35,31 +36,33 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 验证 MybatisPlusPersistence 的业务行为与边界。
+ * 验证 MybatisPersistence 的业务行为与边界。
  */
 @ActiveProfiles("test")
-@MybatisPlusTest(properties = {
+@MybatisTest(properties = {
         "spring.flyway.enabled=false",
         "spring.datasource.url=jdbc:h2:mem:qa-persistence;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "mybatis-plus.mapper-locations=classpath*:/mapper/**/*.xml",
-        "mybatis-plus.configuration.map-underscore-to-camel-case=false"
+        "mybatis.mapper-locations=classpath*:/mapper/**/*.xml",
+        "mybatis.configuration.map-underscore-to-camel-case=false"
 })
 @Import({
-        MybatisPlusConversationRepository.class,
-        MybatisPlusConversationContextRepository.class,
-        MybatisPlusAnswerRepository.class,
-        MybatisPlusAnswerEventRepository.class,
-        MybatisPlusCancellationRepository.class,
-        MybatisPlusTemporaryFileRepository.class,
-        MybatisPlusPersistenceTest.JacksonTestConfiguration.class
+        MybatisConversationRepository.class,
+        MybatisConversationContextRepository.class,
+        MybatisAnswerRepository.class,
+        MybatisAnswerEventRepository.class,
+        MybatisCancellationRepository.class,
+        MybatisTemporaryFileRepository.class,
+        MybatisPersistenceTest.JacksonTestConfiguration.class
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Sql("/db/mybatis-plus-test-schema.sql")
-class MybatisPlusPersistenceTest {
+@Sql("/db/mybatis-test-schema.sql")
+class MybatisPersistenceTest {
 
     /**
      * 测试用户 ID。
@@ -74,32 +77,32 @@ class MybatisPlusPersistenceTest {
      * 测试会话集合。
      */
     @Autowired
-    private MybatisPlusConversationRepository conversations;
+    private MybatisConversationRepository conversations;
 
     /**
      * 测试回答仓储中的记录集合。
      */
     @Autowired
-    private MybatisPlusAnswerRepository answers;
+    private MybatisAnswerRepository answers;
     /** 测试回答执行事件仓储。 */
     @Autowired
-    private MybatisPlusAnswerEventRepository answerEvents;
+    private MybatisAnswerEventRepository answerEvents;
 
     /**
      * 测试停止任务仓储。
      */
     @Autowired
-    private MybatisPlusCancellationRepository cancellations;
+    private MybatisCancellationRepository cancellations;
 
     /**
      * 测试结构化上下文存储。
      */
     @Autowired
-    private MybatisPlusConversationContextRepository contexts;
+    private MybatisConversationContextRepository contexts;
 
     /** 测试临时文件仓储。 */
     @Autowired
-    private MybatisPlusTemporaryFileRepository temporaryFiles;
+    private MybatisTemporaryFileRepository temporaryFiles;
 
     /**
      * 测试 SQL 执行器。
@@ -148,6 +151,33 @@ class MybatisPlusPersistenceTest {
         assertFalse(conversations.findActiveByCreationKey(
                 "another-user", "first-question-key").isPresent());
         assertEquals(1, conversations.listByOwner(OWNER_ID, null, null, 10).size());
+    }
+
+    /**
+     * 验证消息唯一键冲突会回滚本轮回答和消息三写，不能误判为回答幂等成功。
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void rollsBackAnswerCreationWhenMessageInsertConflicts() {
+        final UUID conversationId = createConversation();
+        final UUID questionId = UUID.randomUUID();
+        final UUID answerId = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO qa_message "
+                        + "(public_id, conversation_id, answer_id, role, content, created_at) "
+                        + "VALUES (?, ?, NULL, 'USER', '预置冲突消息', ?)",
+                questionId.toString(), conversationId.toString(), java.sql.Timestamp.from(NOW));
+
+        assertThrows(PersistenceOperationException.class, () -> answers.create(
+                OWNER_ID, conversationId, questionId, answerId, UUID.randomUUID(), null,
+                "本轮必须整体回滚", "message-conflict", NOW.plusSeconds(1)));
+
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM qa_answer WHERE public_id = ?", Integer.class,
+                answerId.toString()).intValue());
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM qa_message WHERE conversation_id = ?", Integer.class,
+                conversationId.toString()).intValue());
     }
 
     /**

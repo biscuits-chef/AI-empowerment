@@ -1,38 +1,28 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import java.sql.Timestamp;
 import java.time.Instant;
 
 /** 与 {@code qa_message} 表对应的持久化记录。 */
-@TableName("qa_message")
 public class ChatMessagePersistenceRecord {
 
     /** 数据库内部自增主键。 */
-    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
     /**
      * 对外稳定 UUID 标识。
      */
-    @TableField("public_id")
     private String publicId;
     /**
      * 会话 ID。
      */
-    @TableField("conversation_id")
     private String conversationId;
     /**
      * 回答 ID。
      */
-    @TableField("answer_id")
     private String answerId;
     /**
      * 回答状态。
      */
-    @TableField(exist = false)
     private String answerStatus;
     /**
      * 消息角色。
@@ -45,7 +35,6 @@ public class ChatMessagePersistenceRecord {
     /**
      * 创建时间。
      */
-    @TableField("created_at")
     private Timestamp createdAt;
 
     /** @return 数据库内部自增主键。 */

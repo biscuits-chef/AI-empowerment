@@ -9,6 +9,8 @@
         <result property="publicId" column="public_id"/>
         <result property="conversationId" column="conversation_id"/>
         <result property="questionId" column="question_id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
         <result property="traceId" column="trace_id"/>
         <result property="regeneratedFromAnswerId" column="regenerated_from_answer_id"/>
         <result property="appConversationId" column="app_conversation_id"/>
@@ -33,13 +35,25 @@
     </resultMap>
 
     <sql id="answerColumns">
-        a.id, a.public_id, a.conversation_id, a.question_id, a.trace_id,
+        a.id, a.public_id, a.conversation_id, a.question_id, a.owner_id,
+        a.idempotency_key, a.trace_id,
         a.regenerated_from_answer_id, a.app_conversation_id, a.status, a.content, a.error_code,
         a.created_at, a.completed_at, a.cancel_reason, a.cancelled_stage, a.message_id,
         a.query_id, a.task_id, a.total_tokens, a.latency, a.tracing_json_str,
         a.intention_json_str, a.retriever_resource,
         a.cancel_error_code, a.cancel_requested_at, a.cancelled_at
     </sql>
+
+    <insert id="insert"
+            parameterType="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerPersistenceRecord"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO qa_answer
+            (public_id, conversation_id, question_id, owner_id, idempotency_key, trace_id,
+             regenerated_from_answer_id, status, content, created_at)
+        VALUES
+            (#{publicId}, #{conversationId}, #{questionId}, #{ownerId}, #{idempotencyKey}, #{traceId},
+             #{regeneratedFromAnswerId}, #{status}, #{content}, #{createdAt})
+    </insert>
 
     <select id="selectByIdempotencyKey" resultMap="answerResult">
         SELECT <include refid="answerColumns"/>
@@ -68,5 +82,37 @@
           AND c.owner_id = #{ownerId}
           AND c.deleted_at IS NULL
     </select>
+
+    <update id="transitionStatus">
+        UPDATE qa_answer
+        SET status = #{status}
+        WHERE public_id = #{id}
+          AND status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING')
+    </update>
+
+    <update id="recordAppConversationId">
+        UPDATE qa_answer
+        SET app_conversation_id = #{appConversationId}
+        WHERE public_id = #{id}
+          AND status IN ('GENERATING', 'CANCEL_REQUESTED')
+          AND (app_conversation_id IS NULL OR app_conversation_id = #{appConversationId})
+    </update>
+
+    <update id="savePartial">
+        UPDATE qa_answer
+        SET content = #{content}
+        WHERE public_id = #{id}
+          AND status = 'GENERATING'
+    </update>
+
+    <update id="finalizeAnswer">
+        UPDATE qa_answer
+        SET status = #{status},
+            content = #{content},
+            error_code = #{errorCode,jdbcType=VARCHAR},
+            completed_at = #{completedAt}
+        WHERE public_id = #{id}
+          AND status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING')
+    </update>
 
 </mapper>

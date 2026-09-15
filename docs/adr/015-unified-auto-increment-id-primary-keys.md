@@ -42,7 +42,7 @@
 ## 验证
 
 - H2 最终结构测试检查全部十张生产表的唯一主键均为 `id BIGINT AUTO_INCREMENT`，并检查原业务唯一键。
-- MyBatis-Plus 集成测试证明数据库自动生成内部 `id`，领域与 API 仍返回原 UUID `public_id`；命名契约测试验证持久化 Record 的显式列映射均遵循数据库字段转小驼峰规则。
+- 原生 MyBatis 集成测试证明数据库自动生成内部 `id`，领域与 API 仍返回原 UUID `public_id`；生成键与命名契约测试验证显式插入、ResultMap 和持久化 Record 均遵循数据库字段转小驼峰规则。
 - 迁移契约测试检查 `V8`～`V17` 逐表覆盖、无 `pk_id`，以及事件序号原值改名路径。
 - 完整门禁为 `mvn -B -ntp clean verify`。
 - H2 和迁移文本检查不能证明 GoldenDB 方言、锁时间、分片自增、故障切换或存量迁移，以上均为生产发布阻塞项。

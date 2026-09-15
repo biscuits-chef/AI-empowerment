@@ -11,6 +11,10 @@ import com.acme.intelligentqa.config.RuntimeEnvironmentGuard;
 import com.acme.intelligentqa.config.RuntimeEnvironmentProperties;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.session.LocalCacheScope;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.type.JdbcType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,7 +37,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
         "spring.datasource.password=",
         "spring.flyway.enabled=false",
         "spring.sql.init.mode=always",
-        "spring.sql.init.schema-locations=classpath:/db/mybatis-plus-test-schema.sql",
+        "spring.sql.init.schema-locations=classpath:/db/mybatis-test-schema.sql",
         "app.qa.demo-mode=true",
         "app.qa.cancellation.scan-delay-millis=60000"
 })
@@ -82,6 +86,12 @@ class IntelligentQaApplicationTest {
     private RequestMappingHandlerMapping requestMappingHandlerMapping;
 
     /**
+     * 原生 MyBatis 会话工厂。
+     */
+    @Autowired
+    private SqlSessionFactory sqlSessionFactory;
+
+    /**
      * 验证完整应用上下文使用 Jetty 成功启动。
      */
     @Test
@@ -108,6 +118,27 @@ class IntelligentQaApplicationTest {
         final ResponseEntity<String> response = restTemplate.getForEntity("/api/v1/chats", String.class);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    /**
+     * 验证原生 MyBatis 的安全运行参数与显式 Mapper 已实际装配。
+     */
+    @Test
+    void configuresNativeMybatisRuntimeAndMapperStatements() {
+        final org.apache.ibatis.session.Configuration configuration = sqlSessionFactory.getConfiguration();
+        assertFalse(configuration.isMapUnderscoreToCamelCase());
+        assertEquals(LocalCacheScope.STATEMENT, configuration.getLocalCacheScope());
+        assertEquals(Integer.valueOf(100), configuration.getDefaultFetchSize());
+        assertEquals(Integer.valueOf(5), configuration.getDefaultStatementTimeout());
+        assertEquals(JdbcType.NULL, configuration.getJdbcTypeForNull());
+        final MappedStatement answerInsert = configuration.getMappedStatement(
+                "com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerMapper.insert");
+        final MappedStatement eventInsert = configuration.getMappedStatement(
+                "com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerEventMapper.insert");
+        assertTrue(answerInsert.getKeyGenerator()
+                instanceof org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator);
+        assertTrue(eventInsert.getKeyGenerator()
+                instanceof org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator);
     }
 
     /**

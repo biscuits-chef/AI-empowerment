@@ -8,8 +8,6 @@ import com.acme.intelligentqa.domain.model.ConversationContext;
 import com.acme.intelligentqa.domain.model.EntityCandidate;
 import com.acme.intelligentqa.domain.model.QueryIntent;
 import com.acme.intelligentqa.domain.port.out.ConversationContextRepositoryPort;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,7 +28,7 @@ import org.springframework.stereotype.Repository;
  * 使用乐观版本控制保存结构化会话上下文，防止并发追问相互覆盖。
  */
 @Repository
-public class MybatisPlusConversationContextRepository implements ConversationContextRepositoryPort {
+public class MybatisConversationContextRepository implements ConversationContextRepositoryPort {
 
     /**
      * 上下文 JSON 的反序列化类型。
@@ -55,14 +53,14 @@ public class MybatisPlusConversationContextRepository implements ConversationCon
     private final ObjectMapper objectMapper;
 
     /**
-     * 创建 {@code MybatisPlusConversationContextRepository} 实例。
+     * 创建 {@code MybatisConversationContextRepository} 实例。
      *
      * @param mapper 数据库映射器。
      *
      * @param objectMapper JSON 对象映射器。
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected collaborators are retained and not exposed")
-    public MybatisPlusConversationContextRepository(
+    public MybatisConversationContextRepository(
             final ConversationContextMapper mapper,
             final ObjectMapper objectMapper) {
         this.mapper = mapper;
@@ -80,12 +78,9 @@ public class MybatisPlusConversationContextRepository implements ConversationCon
      */
     @Override
     public Optional<ConversationContext> find(final String ownerId, final UUID conversationId) {
-        final LambdaQueryWrapper<ConversationContextPersistenceRecord> query =
-                new LambdaQueryWrapper<ConversationContextPersistenceRecord>()
-                        .eq(ConversationContextPersistenceRecord::getConversationId, conversationId.toString())
-                        .eq(ConversationContextPersistenceRecord::getOwnerId, ownerId);
         try {
-            return Optional.ofNullable(mapper.selectOne(query)).map(this::toDomain);
+            return Optional.ofNullable(mapper.selectByOwnerAndConversation(
+                    ownerId, conversationId.toString())).map(this::toDomain);
         } catch (final DataAccessException exception) {
             throw new PersistenceOperationException("failed to read conversation context", exception);
         }
@@ -112,18 +107,8 @@ public class MybatisPlusConversationContextRepository implements ConversationCon
             }
         }
         final ConversationContextPersistenceRecord record = toRecord(context, expectedVersion + 1L);
-        final LambdaUpdateWrapper<ConversationContextPersistenceRecord> update =
-                new LambdaUpdateWrapper<ConversationContextPersistenceRecord>()
-                        .eq(ConversationContextPersistenceRecord::getConversationId,
-                                context.conversationId().toString())
-                        .eq(ConversationContextPersistenceRecord::getOwnerId, context.ownerId())
-                        .eq(ConversationContextPersistenceRecord::getVersion, expectedVersion)
-                        .set(ConversationContextPersistenceRecord::getVersion, expectedVersion + 1L)
-                        .set(ConversationContextPersistenceRecord::getStateJson, record.getStateJson())
-                        .set(ConversationContextPersistenceRecord::getSourceQuestionId, record.getSourceQuestionId())
-                        .set(ConversationContextPersistenceRecord::getUpdatedAt, record.getUpdatedAt());
         try {
-            return mapper.update(null, update) == 1;
+            return mapper.updateByVersion(record, expectedVersion) == 1;
         } catch (final DataAccessException exception) {
             throw new PersistenceOperationException("failed to update conversation context", exception);
         }

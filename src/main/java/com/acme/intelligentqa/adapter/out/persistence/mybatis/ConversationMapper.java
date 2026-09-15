@@ -1,14 +1,43 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.sql.Timestamp;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** 会话表的 MyBatis-Plus 映射器。 */
+/** 会话表的原生 MyBatis 映射器。 */
 @Mapper
-public interface ConversationMapper extends BaseMapper<ConversationPersistenceRecord> {
+public interface ConversationMapper {
+
+    /**
+     * 新增会话并回填数据库自增主键。
+     *
+     * @param record 待新增的会话记录。
+     * @return 受影响行数。
+     */
+    int insert(ConversationPersistenceRecord record);
+
+    /**
+     * 按用户和首次提问幂等键读取有效会话。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param idempotencyKey 首次提问幂等键。
+     * @return 匹配的有效会话，不存在时为空。
+     */
+    ConversationPersistenceRecord selectByCreationKey(
+            @Param("ownerId") String ownerId,
+            @Param("idempotencyKey") String idempotencyKey);
+
+    /**
+     * 按用户和公开标识读取有效会话。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param id 会话公开标识。
+     * @return 匹配的有效会话，不存在时为空。
+     */
+    ConversationPersistenceRecord selectActive(
+            @Param("ownerId") String ownerId,
+            @Param("id") String id);
 
     /**
      * 按所属用户读取有界记录列表。
@@ -73,5 +102,42 @@ public interface ConversationMapper extends BaseMapper<ConversationPersistenceRe
             @Param("ownerId") String ownerId,
             @Param("id") String id,
             @Param("messageIds") List<String> messageIds);
+
+    /**
+     * 修改有效会话名称和更新时间。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param id 会话公开标识。
+     * @param title 新会话名称。
+     * @param updatedAt 更新时间。
+     * @return 受影响行数。
+     */
+    int rename(
+            @Param("ownerId") String ownerId,
+            @Param("id") String id,
+            @Param("title") String title,
+            @Param("updatedAt") Timestamp updatedAt);
+
+    /**
+     * 对有效会话执行逻辑删除。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param id 会话公开标识。
+     * @param deletedAt 删除时间。
+     * @return 受影响行数。
+     */
+    int softDelete(
+            @Param("ownerId") String ownerId,
+            @Param("id") String id,
+            @Param("deletedAt") Timestamp deletedAt);
+
+    /**
+     * 更新有效会话最后活动时间。
+     *
+     * @param id 会话公开标识。
+     * @param updatedAt 更新时间。
+     * @return 受影响行数。
+     */
+    int touch(@Param("id") String id, @Param("updatedAt") Timestamp updatedAt);
 
 }

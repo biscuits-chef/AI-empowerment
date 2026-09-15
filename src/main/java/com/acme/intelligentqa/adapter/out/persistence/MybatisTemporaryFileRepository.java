@@ -8,8 +8,6 @@ import com.acme.intelligentqa.common.error.PersistenceOperationException;
 import com.acme.intelligentqa.domain.model.QuestionFileReference;
 import com.acme.intelligentqa.domain.model.TemporaryFile;
 import com.acme.intelligentqa.domain.port.out.TemporaryFileRepositoryPort;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -23,10 +21,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 基于 MyBatis-Plus 保存临时文件元数据和问题文件不可变关联。
+ * 基于原生 MyBatis 保存临时文件元数据和问题文件不可变关联。
  */
 @Repository
-public class MybatisPlusTemporaryFileRepository implements TemporaryFileRepositoryPort {
+public class MybatisTemporaryFileRepository implements TemporaryFileRepositoryPort {
 
     /** 临时文件映射器。 */
     private final TemporaryFileMapper fileMapper;
@@ -40,7 +38,7 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
      * @param questionFileMapper 问题文件关联映射器。
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected mappers are retained and not exposed")
-    public MybatisPlusTemporaryFileRepository(
+    public MybatisTemporaryFileRepository(
             final TemporaryFileMapper fileMapper,
             final QuestionFileMapper questionFileMapper) {
         this.fileMapper = fileMapper;
@@ -57,14 +55,10 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
     @Override
     public Optional<TemporaryFile> findByIdempotencyKey(
             final String ownerId, final String idempotencyKey) {
-        final LambdaQueryWrapper<TemporaryFilePersistenceRecord> query =
-                new LambdaQueryWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getOwnerId, ownerId)
-                        .eq(TemporaryFilePersistenceRecord::getIdempotencyKey, idempotencyKey)
-                        .isNull(TemporaryFilePersistenceRecord::getDeletedAt);
         return Optional.ofNullable(execute(
-                        () -> fileMapper.selectOne(query), "failed to read idempotent file"))
-                .map(MybatisPlusTemporaryFileRepository::toDomain);
+                        () -> fileMapper.selectByIdempotencyKey(ownerId, idempotencyKey),
+                        "failed to read idempotent file"))
+                .map(MybatisTemporaryFileRepository::toDomain);
     }
 
     /**
@@ -92,13 +86,9 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
     @Override
     public Optional<TemporaryFile> updateStatus(
             final UUID fileId, final TemporaryFile.Status status, final Instant now) {
-        final LambdaUpdateWrapper<TemporaryFilePersistenceRecord> update =
-                new LambdaUpdateWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
-                        .isNull(TemporaryFilePersistenceRecord::getDeletedAt)
-                        .set(TemporaryFilePersistenceRecord::getStatus, status.name())
-                        .set(TemporaryFilePersistenceRecord::getUpdatedAt, Timestamp.from(now));
-        if (execute(() -> fileMapper.update(null, update), "failed to update temporary file") != 1) {
+        if (execute(() -> fileMapper.updateStatus(
+                fileId.toString(), status.name(), Timestamp.from(now)),
+                "failed to update temporary file") != 1) {
             return Optional.empty();
         }
         return findById(fileId);
@@ -136,15 +126,11 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
     @Override
     public Optional<TemporaryFile> findActive(
             final String ownerId, final UUID conversationId, final UUID fileId) {
-        final LambdaQueryWrapper<TemporaryFilePersistenceRecord> query =
-                new LambdaQueryWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
-                        .eq(TemporaryFilePersistenceRecord::getOwnerId, ownerId)
-                        .eq(TemporaryFilePersistenceRecord::getConversationId, conversationId.toString())
-                        .isNull(TemporaryFilePersistenceRecord::getDeletedAt);
         return Optional.ofNullable(execute(
-                        () -> fileMapper.selectOne(query), "failed to read temporary file"))
-                .map(MybatisPlusTemporaryFileRepository::toDomain);
+                        () -> fileMapper.selectOwnedActive(
+                                ownerId, conversationId.toString(), fileId.toString()),
+                        "failed to read temporary file"))
+                .map(MybatisTemporaryFileRepository::toDomain);
     }
 
     /**
@@ -200,17 +186,9 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
             return Optional.empty();
         }
         final Timestamp deletedAt = Timestamp.from(now);
-        final LambdaUpdateWrapper<TemporaryFilePersistenceRecord> update =
-                new LambdaUpdateWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
-                        .eq(TemporaryFilePersistenceRecord::getOwnerId, ownerId)
-                        .eq(TemporaryFilePersistenceRecord::getConversationId, conversationId.toString())
-                        .isNull(TemporaryFilePersistenceRecord::getDeletedAt)
-                        .set(TemporaryFilePersistenceRecord::getStatus,
-                                TemporaryFile.Status.DELETE_PENDING.name())
-                        .set(TemporaryFilePersistenceRecord::getUpdatedAt, deletedAt)
-                        .set(TemporaryFilePersistenceRecord::getDeletedAt, deletedAt);
-        return execute(() -> fileMapper.update(null, update), "failed to delete temporary file") == 1
+        return execute(() -> fileMapper.markDeletePending(
+                ownerId, conversationId.toString(), fileId.toString(), deletedAt),
+                "failed to delete temporary file") == 1
                 ? current : Optional.empty();
     }
 
@@ -243,13 +221,9 @@ public class MybatisPlusTemporaryFileRepository implements TemporaryFileReposito
      * @return 临时文件。
      */
     private Optional<TemporaryFile> findById(final UUID fileId) {
-        final LambdaQueryWrapper<TemporaryFilePersistenceRecord> query =
-                new LambdaQueryWrapper<TemporaryFilePersistenceRecord>()
-                        .eq(TemporaryFilePersistenceRecord::getPublicId, fileId.toString())
-                        .isNull(TemporaryFilePersistenceRecord::getDeletedAt);
         return Optional.ofNullable(execute(
-                        () -> fileMapper.selectOne(query), "failed to read temporary file"))
-                .map(MybatisPlusTemporaryFileRepository::toDomain);
+                        () -> fileMapper.selectById(fileId.toString()), "failed to read temporary file"))
+                .map(MybatisTemporaryFileRepository::toDomain);
     }
 
     /**

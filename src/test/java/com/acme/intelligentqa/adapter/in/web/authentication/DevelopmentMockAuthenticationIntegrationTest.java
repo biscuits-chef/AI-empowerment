@@ -21,7 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
         "spring.datasource.password=",
         "spring.flyway.enabled=false",
         "spring.sql.init.mode=always",
-        "spring.sql.init.schema-locations=classpath:/db/mybatis-plus-test-schema.sql",
+        "spring.sql.init.schema-locations=classpath:/db/mybatis-test-schema.sql",
         "management.health.redis.enabled=false",
         "app.qa.cancellation.scan-delay-millis=60000"
 })

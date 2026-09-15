@@ -3,7 +3,7 @@ package com.acme.intelligentqa.adapter.out.business;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.baomidou.mybatisplus.test.autoconfigure.MybatisPlusTest;
+import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -17,13 +17,13 @@ import org.springframework.test.context.jdbc.SqlConfig;
  * 验证产品快照表固定 MyBatis 语句的快照、产品匹配、日期条件和参数绑定行为。
  */
 @ActiveProfiles("test")
-@MybatisPlusTest(properties = {
+@MybatisTest(properties = {
         "spring.flyway.enabled=false",
         "spring.datasource.url=jdbc:h2:mem:business-query;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "mybatis-plus.mapper-locations=classpath*:/mapper/**/*.xml",
-        "mybatis-plus.configuration.map-underscore-to-camel-case=false"
+        "mybatis.mapper-locations=classpath*:/mapper/**/*.xml",
+        "mybatis.configuration.map-underscore-to-camel-case=false"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql(scripts = "/db/business-query-test-schema.sql", config = @SqlConfig(encoding = "UTF-8"))

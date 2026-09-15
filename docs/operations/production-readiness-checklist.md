@@ -4,9 +4,9 @@
 
 ## 当前评估（2026-09-14）
 
-结论：**NO-GO / 未达到生产发布条件**。本次交付已将十张现有生产表的最终物理主键统一为 `id BIGINT AUTO_INCREMENT`，通过 V8～V17 逐表替换 UUID、业务键、复合键或 `event_id` 主键；资源 UUID 改为非主键 `public_id UNIQUE`，没有引入 `pk_id`。应用持久化映射与固定 SQL 已切换，外部 UUID API 和 SSE 数值游标保持不变。V20 将首问 Agent 类型固化到会话，已有会话页面隐藏选择器，后续提问不再发送该字段并由后端拒绝类型切换。面向前端的业务接口仅使用 GET/POST；一期文件上传范围已于 2026-09-14 移除，前端隐藏入口、后端默认不注册文件控制器。真实 GoldenDB 版本/拓扑、自增行为、DDL 锁时长、存量迁移、数据中台显式列同步和备份恢复尚无环境证据，因此禁止生产执行。产品数据权限、独立只读数据源、确定性字段级对账、双通道证据快照与引用、持久生成任务、跨实例 Redis、统一认证及生产 SLO 等既有阻塞项也仍未完成。
+结论：**NO-GO / 未达到生产发布条件**。本次交付将数据访问统一为原生 MyBatis：全部持久化操作改为具名 Mapper、固定参数化 SQL 和显式 ResultMap，数据库自增键通过 JDBC generated keys 回填；外部 API、数据格式和 Flyway 版本均未改变。十张现有生产表的最终物理主键仍统一为 `id BIGINT AUTO_INCREMENT`，资源 UUID 仍为非主键 `public_id UNIQUE`，没有引入 `pk_id`。真实 GoldenDB 版本/拓扑、自增与 generated keys、SQL 语义、DDL 锁时长、存量迁移、数据中台显式列同步和备份恢复尚无环境证据，因此禁止生产执行。产品数据权限、独立只读数据源、确定性字段级对账、双通道证据快照与引用、持久生成任务、跨实例 Redis、统一认证及生产 SLO 等既有阻塞项也仍未完成。
 
-本地代码证据：2026-09-14 在 OpenJDK 8u452、Maven 3.9.9 下执行 `mvn -B -ntp clean verify`，Surefire 166 项与 Failsafe 6 项测试通过，0 失败、0 错误、0 跳过；Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文 Javadoc、JaCoCo、Enforcer 和 Failsafe 均通过。JaCoCo 报告覆盖 85 个纳入统计的类，指令覆盖率 89.44%，分支覆盖率 72.80%。生成 JAR 的 SHA-256 为 `0b069ec90f76e48e9504a47da7dcf54a6f2bd594417dfc11349036089041019f`。`DatabasePrimaryKeyPolicyIT` 检查 H2 最终结构、业务唯一键、MyBatis `IdType.AUTO` 映射、数据库列到持久化字段的小驼峰命名、V8～V17 主键迁移、V19 HiAgent 元数据和 V20 会话 Agent 类型迁移文本；它没有在真实 MySQL/GoldenDB 上执行 Flyway 存量升级，因此不能证明 GoldenDB 方言、非事务 DDL、锁、分片自增或故障切换。
+本地代码证据：2026-09-14 在 OpenJDK 8u452、Maven 3.9.9 下执行 `mvn -B -ntp clean verify`，Surefire 169 项与 Failsafe 6 项测试通过，0 失败、0 错误、0 跳过；Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文 Javadoc、JaCoCo、Enforcer 和 Failsafe 均通过。JaCoCo 报告覆盖 85 个纳入统计的类，指令覆盖率 89.44%，分支覆盖率 72.80%。生成 JAR 的 SHA-256 为 `e591b4794f7b754470de2c04d618e3e8f0df5bb3f6254141ab18afd54ee5cce3`。依赖树仅包含 `mybatis-spring-boot-starter`/测试 Starter 2.3.2、MyBatis 3.5.19 和 MyBatis-Spring 2.1.2，没有 `com.baomidou` 依赖。测试覆盖原生 MyBatis Mapper 装载、显式 ResultMap、六类 generated-key 配置、回答事件生成序号的实际回填、Owner 隔离、逻辑删除、稳定游标、幂等、乐观锁、回答与消息三写事务回滚、反馈 Upsert、取消租约 CAS 和受控业务查询；这些 H2 证据不能证明真实 GoldenDB 方言、隔离、锁、分片自增、generated keys、超时、故障切换或查询计划。
 
 ## 产品与责任归属
 
@@ -28,21 +28,23 @@
 
 - [ ] 已确认 GoldenDB 产品版本、拓扑、兼容模式、分片 Key 和全局索引。
 - [x] ADR-015、需求、架构和表结构全景已规定所有现有及未来表只能使用 `id BIGINT NOT NULL AUTO_INCREMENT` 主键，禁止 `pk_id`、UUID 或复合业务主键；H2 元数据策略测试覆盖十张现有生产表。
-- [x] 持久化 Record 字段以数据库列名为准按 Java 小驼峰命名；`DatabasePrimaryKeyPolicyIT` 自动检查 `@TableId`、`@TableField` 和关键 ResultMap，防止重新引入 `databaseId`、`providerMessageId` 等物理列别名。
+- [x] 持久化 Record 字段以数据库列名为准按 Java 小驼峰命名；`DatabasePrimaryKeyPolicyIT` 自动检查持久化字段、显式 ResultMap 和生成键 SQL，防止重新引入 `databaseId`、`providerMessageId` 等物理列别名。
 - [x] V8～V17 每个迁移只切换一张表；资源 UUID 改为 `public_id UNIQUE`，其余原业务主键改为唯一键，`qa_answer_event.event_id` 原值改名为 `id` 且不重新编号。
 - [x] V20 为 `qa_conversation` 增加不可空 `agent_type`；首问显式保存，后续问答及重新生成读取会话值，前端后续请求不携带该字段，类型切换在创建回答前失败关闭。
 - [ ] V20 已在真实 GoldenDB 验证历史会话默认值回填、加列锁时长、复制延迟、旧应用兼容和失败前滚。
 - [ ] 已在目标 GoldenDB 从 V1～V7 代表性存量数据实际执行 V8～V17，逐版本核对行数、公开 ID、业务唯一键、事件最大序号、索引、JDBC generated keys、执行时长及失败前滚。
 - [ ] 已确认目标拓扑下 `AUTO_INCREMENT` 的全局唯一性、号段/步长、热点、主备切换、扩缩容和备份恢复行为。
 - [ ] 数据中台产品快照同步已改用显式列清单并忽略数据库生成的 `id`，重复批次仍由 `(PRDC_CD, DT)` 唯一键安全拒绝或幂等处理。
-- [x] 应用数据访问已切换为 MyBatis-Plus 3.5.17；单表 CRUD、Owner 隔离、逻辑删除、消息顺序、问题提交幂等指纹、反馈 Upsert、回答终态同步和 30,000 个中文字符内容容量具备 H2 测试。停止等其他操作尚未统一落地 `(Owner, operation, key, fingerprint)` 记录。
+- [x] 应用数据访问已切换为 `mybatis-spring-boot-starter` 2.3.2，并显式固定 MyBatis 3.5.19；全部 CRUD/CAS 使用具名 Mapper 与固定参数化 SQL。H2 测试覆盖 Owner 隔离、逻辑删除、消息顺序、问题提交幂等指纹、三写事务回滚、反馈 Upsert、回答终态同步和 30,000 个中文字符容量。停止等其他操作尚未统一落地 `(Owner, operation, key, fingerprint)` 记录。
+- [x] Maven Enforcer 禁止 `com.baomidou:*` 直接及传递依赖；运行时装配测试验证 Mapper 路径、关闭自动驼峰、语句级缓存、Fetch Size、五秒语句超时、空值 JDBC 类型和关键生成键配置。
+- [ ] 安全/供应链负责人已审核原生 MyBatis 依赖树、SBOM、CVE、许可证、镜像摘要和签名；本地依赖收敛不能替代企业供应链准入。
 - [x] 一期产品查询使用固定 MyBatis Statement；H2 测试覆盖最新快照、实体解析、两种投资经理口径、两个日期条件和结果上限。目录中缺少物理映射的字段会在 SQL 前失败关闭，但真实字段字典仍待数据负责人批准。
 - [ ] 数据平台已签署并同步 `dws_product_info_d` 完整快照，确认三个日期字段质量规则、产品数据权限和失败批次处理方式。
 - [ ] 业务查询使用独立只读账号与连接池，生产 `app.business-query.enabled` 在完成真实环境门禁前保持关闭。
-- [ ] 在真实 GoldenDB 验证 MyBatis-Plus 生成 SQL、XML 联表 SQL、`ON DUPLICATE KEY UPDATE`、`TIMESTAMP(6)` 和异常转换行为。
+- [ ] 在真实 GoldenDB 验证原生 MyBatis 显式 INSERT/UPDATE/CAS、六类 JDBC generated keys 回填、XML 联表 SQL、`ON DUPLICATE KEY UPDATE`、`TIMESTAMP(6)`、超时和异常转换行为。
 - [ ] `V3` 已按前向迁移扩展 `qa_message.content`，但仍需在真实 GoldenDB 用代表性数据验证语法、在线 DDL、锁表时间及前滚方案。
 - [ ] `V4` 新增 `qa_conversation_context`，仍需在真实 GoldenDB 验证主键/Owner 索引、`MEDIUMTEXT` JSON 容量、乐观版本并发和滚动发布兼容性。
-- [x] `V5` 临时文件元数据、处理状态、Owner/会话隔离和问题文件用途关联具备 MyBatis-Plus H2 集成测试。
+- [x] `V5` 临时文件元数据、处理状态、Owner/会话隔离和问题文件用途关联具备原生 MyBatis H2 集成测试。
 - [ ] `V5` 已在真实 GoldenDB 验证 SQL 方言、索引、滚动发布兼容性和前滚方案。
 - [ ] `V7` 与 `V17` 已在真实 GoldenDB 验证 `dws_product_info_d` 业务唯一键、统一自增主键、索引长度、字符集、迁移耗时和前滚方案。
 - [ ] 关键 SQL 具备真实 GoldenDB `EXPLAIN` 证据，结果集有明确上限。
@@ -135,8 +137,10 @@
 - [ ] 已记录不可变制品的来源、签名/校验和、环境晋级流程和配置负责人。
 - [ ] 发布平台已分别配置 `TEST_*`、`PROD_*` 变量和密钥引用，并通过配置差异审查证明不存在跨环境地址或凭据串用。
 - [ ] 金丝雀/滚动策略、健康门禁、功能开关和停止标准已经演练。
+- [ ] 原生 MyBatis 金丝雀已实际执行会话、回答、消息、上下文、事件和文件元数据读写；generated-key-null、持久化 5xx、SQL 错误、Hikari 等待、死锁与延迟达到停止阈值时自动中止，且阈值、观察窗口和负责人已批准。
 - [ ] 已盘点全部外部 API 调用方，并批准前后端同窗口切换 GET/POST 新契约；旧 PATCH、PUT、DELETE 客户端在切换后会失败，不允许单侧滚动或长期混跑。
 - [ ] 应用回滚与已部署表结构兼容；否则前滚路径已经演练。
+- [ ] 框架切换回滚以恢复上一不可变应用制品和对应配置为单位，不做数据库逆向迁移；已验证不能只回滚依赖或只恢复旧配置前缀。
 - [ ] 已批准停写维护窗口、排空活动任务、设置 `PROD_FLYWAY_TARGET=20`、逐版本核验点、停止条件和一致性备份；本次不支持旧、新应用普通滚动混跑。
 - [ ] 已演练 V8～V17 任一步失败后的前向修复；如需退库，只能恢复一致性备份和匹配旧结构的应用版本，不能仅回滚旧二进制。
 - [ ] 部署后验证覆盖业务行为与 SLO。

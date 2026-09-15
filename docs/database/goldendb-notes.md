@@ -1,12 +1,12 @@
 # GoldenDB 验证说明
 
-示例使用 MySQL Connector/J、MyBatis-Plus 3.5.17 和 MySQL 风格 DDL。MyBatis-Plus 只负责数据访问映射，不代表目标 GoldenDB 必然兼容所有 MySQL 语法。不同 GoldenDB 产品版本的兼容细节可能不同；本文件是一份验证工作表，不代表对任何具体集群的能力承诺。
+示例使用 MySQL Connector/J、原生 MyBatis 3.5.19 和 MySQL 风格 DDL。MyBatis 只负责数据访问映射，不代表目标 GoldenDB 必然兼容所有 MySQL 语法。不同 GoldenDB 产品版本的兼容细节可能不同；本文件是一份验证工作表，不代表对任何具体集群的能力承诺。
 
 发布前记录：
 
 - GoldenDB 产品版本、精确版本号、兼容模式、拓扑、可用区及故障切换策略；
 - 受支持的连接器，以及 TLS/认证设置；
-- MyBatis-Plus 生成的插入/更新 SQL、XML 联表 SQL、`ON DUPLICATE KEY UPDATE` 和 `TIMESTAMP(6)` 的兼容性；
+- 原生 MyBatis 显式插入、条件更新、XML 联表 SQL、`ON DUPLICATE KEY UPDATE` 和 `TIMESTAMP(6)` 的兼容性；
 - 分布/分片 Key 规则、同置表、全局索引，以及所有表 `id BIGINT AUTO_INCREMENT` 的序列、自增和热点行为；
 - 支持的 DDL/DML、在线表结构变更约束、事务/隔离/锁行为；
 - 使用有代表性的统计信息和数据量，为每条关键查询保留执行计划；
@@ -24,7 +24,7 @@ Flyway 创建 `dws_product_info_d` 空表和索引，数据中台负责同步完
 
 所有表最终必须且只能使用 `id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY`，不得存在 `pk_id`，UUID 和复合业务键只保留为普通唯一业务字段。四张资源表的旧 UUID `id` 改名为 `public_id`；事件表的 `event_id` 保留原值并改名为 `id`。
 
-Java 持久化 Record 必须以数据库列为准按小驼峰命名：去掉下划线，并将下划线后的首字母大写，例如 `public_id -> publicId`、`message_id -> messageId`。物理列 `id` 只能映射为 `id`，不得使用 `databaseId` 等别名；该约束由集成测试扫描 `@TableId`、`@TableField` 和 Mapper ResultMap。
+Java 持久化 Record 必须以数据库列为准按小驼峰命名：去掉下划线，并将下划线后的首字母大写，例如 `public_id -> publicId`、`message_id -> messageId`。物理列 `id` 只能映射为 `id`，不得使用 `databaseId` 等别名；该约束由集成测试扫描持久化字段、显式 ResultMap 和生成键 SQL。
 
 该合同切换不能与旧应用普通滚动混跑。生产必须显式设置 `PROD_FLYWAY_TARGET=17`，并在停写、任务排空和一致性备份后执行。发布前必须在目标 GoldenDB 验证：
 
