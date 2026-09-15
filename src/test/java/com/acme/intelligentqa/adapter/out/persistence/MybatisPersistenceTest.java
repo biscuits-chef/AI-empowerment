@@ -42,14 +42,15 @@ import org.springframework.transaction.annotation.Transactional;
  * 验证 MybatisPersistence 的业务行为与边界。
  */
 @ActiveProfiles("test")
-@SpringBootTest(classes = {
-        MybatisPersistenceTest.JacksonTestConfiguration.class,
-        MybatisConversationRepository.class,
-        MybatisConversationContextRepository.class,
-        MybatisAnswerRepository.class,
-        MybatisAnswerEventRepository.class,
-        MybatisCancellationRepository.class,
-        MybatisTemporaryFileRepository.class
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
+        "spring.flyway.enabled=false",
+        "spring.datasource.url=jdbc:h2:mem:qa-persistence;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "mybatis.mapper-locations=classpath*:/mapper/**/*.xml",
+        "mybatis.configuration.map-underscore-to-camel-case=false",
+        "app.qa.demo-mode=true",
+        "app.qa.cancellation.scan-delay-millis=60000"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql("/db/mybatis-test-schema.sql")
