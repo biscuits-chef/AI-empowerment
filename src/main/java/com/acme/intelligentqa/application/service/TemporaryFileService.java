@@ -26,6 +26,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -36,6 +38,8 @@ public class TemporaryFileService implements TemporaryFileUseCase {
 
     /** 支持扩展名到规范内容类型的映射。 */
     private static final Map<String, String> CONTENT_TYPES = supportedContentTypes();
+    /** 日志记录器。 */
+    private static final Logger logger = LoggerFactory.getLogger(TemporaryFileService.class);
     /** 会话仓储。 */
     private final ConversationRepositoryPort conversationRepository;
     /** 文件元数据仓储。 */
@@ -119,6 +123,8 @@ public class TemporaryFileService implements TemporaryFileUseCase {
                 boundedContent.length, sha256, objectKey, validUsage,
                 TemporaryFile.Status.UPLOADING, now, now);
         fileRepository.create(uploading, validKey);
+        logger.info("开始上传临时文件，文件ID：{}，会话ID：{}，所有者：{}，文件名：{}，文件大小：{}字节", 
+                fileId, validConversationId, validOwner, validName, boundedContent.length);
         try {
             objectStorage.store(objectKey, boundedContent, normalizedType);
             final TemporaryFile.Status storedStatus = properties.allowUnprocessedReady()
@@ -127,6 +133,7 @@ public class TemporaryFileService implements TemporaryFileUseCase {
                     .orElseThrow(() -> new DependencyUnavailableException(
                             "FILE_STATE_UPDATE_FAILED", "uploaded file state could not be updated"));
         } catch (final DependencyUnavailableException | PersistenceOperationException exception) {
+            logger.error("临时文件上传失败，文件ID：{}，对象键：{}，异常：{}", fileId, objectKey, exception.getMessage(), exception);
             fileRepository.updateStatus(fileId, TemporaryFile.Status.FAILED, Instant.now(clock));
             compensateObject(objectKey);
             throw exception;

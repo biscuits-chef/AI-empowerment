@@ -24,7 +24,7 @@
         <obs-sdk.version>3.23.9</obs-sdk.version>
         <mysql-connector.version>8.0.33</mysql-connector.version>
         <mybatis-spring-boot.version>2.3.2</mybatis-spring-boot.version>
-        <mybatis.version>3.5.19</mybatis.version>
+        <mybatis.version>3.5.15</mybatis.version>
         <checkstyle.version>8.45.1</checkstyle.version>
         <jacoco.version>0.8.12</jacoco.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
@@ -86,6 +86,11 @@
             <version>${mybatis-spring-boot.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis</artifactId>
+            <version>3.5.15</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
@@ -128,6 +133,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>asm</artifactId>
+                    <groupId>org.ow2.asm</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
@@ -141,16 +152,104 @@
             <version>${javaparser.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter-test</artifactId>
-            <version>${mybatis-spring-boot.version}</version>
-            <scope>test</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.mybatis.spring.boot</groupId>-->
+<!--            <artifactId>mybatis-spring-boot-starter-test</artifactId>-->
+<!--            <version>${mybatis-spring-boot.version}</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spdb.speedstudio</groupId>
+            <artifactId>uias-spring-boot-starter</artifactId>
+            <version>1.0.7-RELEASE</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/speedstudio/uias-spring-boot-starter/1.0.7-RELEASE/uias-spring-boot-starter-1.0.7-RELEASE.jar</systemPath>
+            <exclusions>
+                <exclusion>
+                    <artifactId>asm</artifactId>
+                    <groupId>org.ow2.asm</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>guava</artifactId>
+                    <groupId>com.google.guava</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-lang</artifactId>
+                    <groupId>commons-lang</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-httpclient</artifactId>
+                    <groupId>commons-httpclient</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-logging</artifactId>
+                    <groupId>commons-logging</groupId>
+                </exclusion>
+
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spdb.speedstudio</groupId>
+            <artifactId>uias-sdk</artifactId>
+            <version>1.0.7-RELEASE</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/speedstudio/uias-sdk/1.0.7-RELEASE/uias-sdk-1.0.7-RELEASE.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>com.trs</groupId>
+            <artifactId>esf-sdk</artifactId>
+            <version>3.2-RELEASE</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/esf/esf-sdk/3.2-RELEASE/esf-sdk-3.2-RELEASE.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>31.0.1-jre</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-httpclient</groupId>
+            <artifactId>commons-httpclient</artifactId>
+            <version>3.1</version>
+        </dependency>
+
+
+        <!-- 本地自定义第三方 JAR 依赖（已配置在 libs/ 目录下） -->
+        <dependency>
+            <groupId>com.trs</groupId>
+            <artifactId>api</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/trshybase-api.jar</systemPath>
+        </dependency>
+        
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
 
@@ -160,6 +259,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- 确保 spring-boot 打包时自动把 libs 目录下的本地 system jar 打入 fat jar -->
+                    <includeSystemScope>true</includeSystemScope>
                     <layers>
                         <enabled>true</enabled>
                     </layers>
@@ -169,6 +270,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
                     <parameters>true</parameters>
                     <compilerArgs>
                         <arg>-Xlint:all</arg>

@@ -2,9 +2,9 @@
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
     <comment>测试环境配置</comment>
-    <entry key="spring.datasource.url">${TEST_DB_URL}</entry>
-    <entry key="spring.datasource.username">${TEST_DB_USERNAME}</entry>
-    <entry key="spring.datasource.password">${TEST_DB_PASSWORD}</entry>
+    <entry key="spring.datasource.url">${TEST_DB_URL:jdbc:mysql://21.37.78.195:8891/intelligent_qa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false}</entry>
+    <entry key="spring.datasource.username">${TEST_DB_USERNAME:liea}</entry>
+    <entry key="spring.datasource.password">${TEST_DB_PASSWORD:Liea%4321}</entry>
     <entry key="spring.redis.host">${TEST_REDIS_HOST:127.0.0.1}</entry>
     <entry key="spring.redis.port">${TEST_REDIS_PORT:6379}</entry>
     <entry key="spring.redis.password">${TEST_REDIS_PASSWORD:}</entry>
@@ -23,4 +23,26 @@
     <entry key="app.obs.enabled">${TEST_OBS_ENABLED:false}</entry>
     <entry key="app.file.storage-mode">${TEST_FILE_STORAGE_MODE:disabled}</entry>
     <entry key="app.file.allow-unprocessed-ready">false</entry>
+    <entry key="app.rag.mode">${APP_RAG_MODE:MOCK}</entry>
+    <entry key="app.rag.urls">${APP_RAG_URLS:}</entry>
+    <entry key="app.rag.username">${APP_RAG_USERNAME:}</entry>
+    <entry key="app.rag.password">${APP_RAG_PASSWORD:}</entry>
+    <entry key="app.rag.database">${APP_RAG_DATABASE:}</entry>
+    <entry key="app.rag.collection">${APP_RAG_COLLECTION:}</entry>
+    <entry key="app.rag.sort-method">${APP_RAG_SORT_METHOD:RELEVANCE}</entry>
+    <entry key="app.rag.read-columns">${APP_RAG_READ_COLUMNS:}</entry>
+    <entry key="app.rag.strong-consistency">${APP_RAG_STRONG_CONSISTENCY:false}</entry>
+    <entry key="app.rag.vector-candidates">${APP_RAG_VECTOR_CANDIDATES:100}</entry>
+    <entry key="app.rag.query-offset">${APP_RAG_QUERY_OFFSET:0}</entry>
+    <entry key="app.rag.query-limit">${APP_RAG_QUERY_LIMIT:100}</entry>
+    <entry key="app.uias.redirect-url">${TEST_UIAS_REDIRECT_URL:https://uias-idp.sit.spdb.com/NIDP/}</entry>
+    <entry key="app.uias.token-type">${TEST_UIAS_TOKEN_TYPE:SAMLResponse}</entry>
+    <entry key="app.uias.realm-name">${TEST_UIAS_REALM_NAME:testrealm}</entry>
+    <entry key="app.uias.dc-name">${TEST_UIAS_DC_NAME:test}</entry>
+    <entry key="app.uias.cert-path">${TEST_UIAS_CERT_PATH:classpath:idp-test.cer}</entry>
+    <entry key="app.uias.check-recipient">${TEST_UIAS_CHECK_RECIPIENT:true}</entry>
+    <entry key="app.uias.validation-errorpage">${TEST_UIAS_VALIDATION_ERROR_PAGE:/api/login?error=validation}</entry>
+    <entry key="app.uias.filter-name">${TEST_UIAS_FILTER_NAME:UIASAuthFilter}</entry>
+    <entry key="app.uias.filter-order">${TEST_UIAS_FILTER_ORDER:1}</entry>
+    <entry key="app.uias.url-pattern">${TEST_UIAS_URL_PATTERN:/*}</entry>
 </properties>

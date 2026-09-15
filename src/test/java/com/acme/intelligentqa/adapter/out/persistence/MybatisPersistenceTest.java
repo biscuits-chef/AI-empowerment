@@ -21,7 +21,6 @@ import com.acme.intelligentqa.domain.model.TemporaryFile;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.in.AnswerCancellationUseCase;
 import com.acme.intelligentqa.domain.port.out.CancellationRepositoryPort;
-import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -30,7 +29,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -43,25 +42,19 @@ import org.springframework.transaction.annotation.Transactional;
  * 验证 MybatisPersistence 的业务行为与边界。
  */
 @ActiveProfiles("test")
-@MybatisTest(properties = {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
         "spring.flyway.enabled=false",
         "spring.datasource.url=jdbc:h2:mem:qa-persistence;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "mybatis.mapper-locations=classpath*:/mapper/**/*.xml",
-        "mybatis.configuration.map-underscore-to-camel-case=false"
-})
-@Import({
-        MybatisConversationRepository.class,
-        MybatisConversationContextRepository.class,
-        MybatisAnswerRepository.class,
-        MybatisAnswerEventRepository.class,
-        MybatisCancellationRepository.class,
-        MybatisTemporaryFileRepository.class,
-        MybatisPersistenceTest.JacksonTestConfiguration.class
+        "mybatis.configuration.map-underscore-to-camel-case=false",
+        "app.qa.demo-mode=true",
+        "app.qa.cancellation.scan-delay-millis=60000"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql("/db/mybatis-test-schema.sql")
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class MybatisPersistenceTest {
 
     /**
@@ -157,7 +150,6 @@ class MybatisPersistenceTest {
      * 验证消息唯一键冲突会回滚本轮回答和消息三写，不能误判为回答幂等成功。
      */
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void rollsBackAnswerCreationWhenMessageInsertConflicts() {
         final UUID conversationId = createConversation();
         final UUID questionId = UUID.randomUUID();
