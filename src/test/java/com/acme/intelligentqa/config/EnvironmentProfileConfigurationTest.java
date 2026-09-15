@@ -31,6 +31,48 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("${DEV_AUTH_MODE:mock}", source.getProperty("app.auth.mode"));
         assertEquals("${DEV_MOCK_USER_ID:dev-user-001}", source.getProperty("app.auth.mock-user-id"));
         assertEquals("${DEV_QA_DEMO_MODE:true}", source.getProperty("app.qa.demo-mode"));
+        assertEquals("sqlite", source.getProperty("app.datasource.type"));
+        assertEquals("jdbc:sqlite:./data/intelligent_qa.db", source.getProperty("spring.datasource.url"));
+        assertEquals("false", source.getProperty("spring.flyway.enabled"));
+        assertEquals("always", source.getProperty("spring.sql.init.mode"));
+    }
+
+    /**
+     * 验证开发环境通过开关切换到 MySQL 数据源。
+     */
+    @Test
+    void developmentProfileSwitchesToMysqlViaDatasourceToggle() {
+        final MockEnvironment environment = new MockEnvironment()
+                .withProperty("DEV_DB_TYPE", "mysql")
+                .withProperty("DEV_DB_URL", "jdbc:mysql://10.0.0.1:3306/qa_formal");
+        environment.setActiveProfiles("dev");
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+        final PropertySource<?> source = environment.getPropertySources().get(
+                XmlApplicationEnvironmentPostProcessor.PROPERTY_SOURCE_NAME);
+
+        assertEquals("mysql", source.getProperty("app.datasource.type"));
+        assertEquals("jdbc:mysql://10.0.0.1:3306/qa_formal", source.getProperty("spring.datasource.url"));
+        assertEquals("true", source.getProperty("spring.flyway.enabled"));
+        assertEquals("never", source.getProperty("spring.sql.init.mode"));
+    }
+
+    /**
+     * 验证开发环境通过 MySQL 地址前缀自动智能切换为 MySQL 模式。
+     */
+    @Test
+    void developmentProfileAutoDetectsMysqlFromUrlPrefix() {
+        final MockEnvironment environment = new MockEnvironment()
+                .withProperty("DEV_DB_URL", "jdbc:mysql://localhost:3306/auto_qa");
+        environment.setActiveProfiles("dev");
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+        final PropertySource<?> source = environment.getPropertySources().get(
+                XmlApplicationEnvironmentPostProcessor.PROPERTY_SOURCE_NAME);
+
+        assertEquals("mysql", source.getProperty("app.datasource.type"));
+        assertEquals("jdbc:mysql://localhost:3306/auto_qa", source.getProperty("spring.datasource.url"));
+        assertEquals("true", source.getProperty("spring.flyway.enabled"));
     }
 
     /**
@@ -79,10 +121,28 @@ class EnvironmentProfileConfigurationTest {
     }
 
     /**
+     * 验证在开发环境激活 SQLite 时，能自动创建数据库文件的父级目录。
+     */
+    @Test
+    void developmentProfileEnsuresSqliteParentDirectoryExists() {
+        final String customDir = "target/auto-created-data-" + System.currentTimeMillis();
+        final String sqliteUrl = "jdbc:sqlite:" + customDir + "/test.db?busy_timeout=3000";
+        final MockEnvironment environment = new MockEnvironment()
+                .withProperty("DEV_DB_URL", sqliteUrl);
+        environment.setActiveProfiles("dev");
+
+        final java.io.File dir = new java.io.File(customDir);
+        org.junit.jupiter.api.Assertions.assertFalse(dir.exists());
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+
+        org.junit.jupiter.api.Assertions.assertTrue(dir.exists());
+    }
+
+    /**
      * 加载指定 XML 配置资源。
      *
      * @param profile 待加载的环境 Profile。
-     *
      * @return 加载指定 XML 配置资源。
      */
     private PropertySource<?> load(final String profile) {

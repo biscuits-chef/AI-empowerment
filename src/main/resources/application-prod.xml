@@ -24,4 +24,16 @@
     <entry key="app.obs.enabled">${PROD_OBS_ENABLED:false}</entry>
     <entry key="app.file.storage-mode">${PROD_FILE_STORAGE_MODE:disabled}</entry>
     <entry key="app.file.allow-unprocessed-ready">false</entry>
+    <entry key="app.rag.mode">${APP_RAG_MODE:MOCK}</entry>
+    <entry key="app.rag.urls">${APP_RAG_URLS:}</entry>
+    <entry key="app.rag.username">${APP_RAG_USERNAME:}</entry>
+    <entry key="app.rag.password">${APP_RAG_PASSWORD:}</entry>
+    <entry key="app.rag.database">${APP_RAG_DATABASE:}</entry>
+    <entry key="app.rag.collection">${APP_RAG_COLLECTION:}</entry>
+    <entry key="app.rag.sort-method">${APP_RAG_SORT_METHOD:RELEVANCE}</entry>
+    <entry key="app.rag.read-columns">${APP_RAG_READ_COLUMNS:}</entry>
+    <entry key="app.rag.strong-consistency">${APP_RAG_STRONG_CONSISTENCY:false}</entry>
+    <entry key="app.rag.vector-candidates">${APP_RAG_VECTOR_CANDIDATES:100}</entry>
+    <entry key="app.rag.query-offset">${APP_RAG_QUERY_OFFSET:0}</entry>
+    <entry key="app.rag.query-limit">${APP_RAG_QUERY_LIMIT:100}</entry>
 </properties>

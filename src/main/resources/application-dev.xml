@@ -2,12 +2,12 @@
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
     <comment>开发环境配置</comment>
-    <entry key="spring.datasource.url">${DEV_DB_URL:jdbc:mysql://127.0.0.1:3306/intelligent_qa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false}</entry>
-    <entry key="spring.datasource.username">${DEV_DB_USERNAME:intelligent_qa}</entry>
-    <entry key="spring.datasource.password">${DEV_DB_PASSWORD:local-only}</entry>
-    <entry key="spring.redis.host">${DEV_REDIS_HOST:127.0.0.1}</entry>
-    <entry key="spring.redis.port">${DEV_REDIS_PORT:6379}</entry>
-    <entry key="spring.redis.password">${DEV_REDIS_PASSWORD:}</entry>
+    <entry key="spring.datasource.url">${TEST_DB_URL:jdbc:mysql://21.37.78.195:8891/intelligent_qa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false}</entry>
+    <entry key="spring.datasource.username">${TEST_DB_USERNAME:liea}</entry>
+    <entry key="spring.datasource.password">${TEST_DB_PASSWORD:Liea%4321}</entry>
+    <entry key="spring.redis.host">${DEV_REDIS_HOST:sh21bwm01-liea-redis-rel-89619-0-0.redis.dcs.spdbcloud.com}</entry>
+    <entry key="spring.redis.port">${DEV_REDIS_PORT:5398}</entry>
+    <entry key="spring.redis.password">${DEV_REDIS_PASSWORD:Liea@0501}</entry>
     <entry key="management.endpoints.web.exposure.include">health,info,metrics,prometheus</entry>
     <entry key="management.endpoint.health.show-details">always</entry>
     <entry key="app.runtime.stage">DEVELOPMENT</entry>
@@ -23,4 +23,25 @@
     <entry key="app.obs.enabled">${DEV_OBS_ENABLED:false}</entry>
     <entry key="app.file.storage-mode">${DEV_FILE_STORAGE_MODE:local}</entry>
     <entry key="app.file.allow-unprocessed-ready">${DEV_FILE_ALLOW_UNPROCESSED_READY:true}</entry>
+    <entry key="app.rag.urls">${DEV_RAG_URLS:http://21.64.192.161:5555;http://21.64.192.114:5555;http://21.64.192.80:5555;http://21.64.192.60:5555;http://21.64.192.27:5555;http://21.64.192.52:5555}</entry>
+    <entry key="app.rag.username">${DEV_RAG_USERNAME:trs}</entry>
+    <entry key="app.rag.password">${DEV_RAG_PASSWORD:trs123}</entry>
+    <entry key="app.rag.database">${DEV_RAG_DATABASE:demo}</entry>
+    <entry key="app.rag.collection">${DEV_RAG_COLLECTION:demo}</entry>
+    <entry key="app.rag.sort-method">${DEV_RAG_SORT_METHOD:RELEVANCE}</entry>
+    <entry key="app.rag.read-columns">${DEV_RAG_READ_COLUMNS:标题;正文;}</entry>
+    <entry key="app.rag.strong-consistency">${DEV_RAG_STRONG_CONSISTENCY:false}</entry>
+    <entry key="app.rag.vector-candidates">${DEV_RAG_VECTOR_CANDIDATES:100}</entry>
+    <entry key="app.rag.query-offset">${DEV_RAG_QUERY_OFFSET:0}</entry>
+    <entry key="app.rag.query-limit">${DEV_RAG_QUERY_LIMIT:100}</entry>
+    <entry key="app.uias.redirect-url">${DEV_UIAS_REDIRECT_URL:https://uias-idp.sit.spdb.com/NIDP/}</entry>
+    <entry key="app.uias.token-type">${DEV_UIAS_TOKEN_TYPE:SAMLResponse}</entry>
+    <entry key="app.uias.realm-name">${DEV_UIAS_REALM_NAME:myrealm}</entry>
+    <entry key="app.uias.dc-name">${DEV_UIAS_DC_NAME:biz}</entry>
+    <entry key="app.uias.cert-path">${DEV_UIAS_CERT_PATH:classpath:idp-2023-test.cer}</entry>
+    <entry key="app.uias.check-recipient">${DEV_UIAS_CHECK_RECIPIENT:true}</entry>
+    <entry key="app.uias.validation-errorpage">${DEV_UIAS_VALIDATION_ERROR_PAGE:/api/login?error=validation}</entry>
+    <entry key="app.uias.filter-name">${DEV_UIAS_FILTER_NAME:UIASAuthFilter}</entry>
+    <entry key="app.uias.filter-order">${DEV_UIAS_FILTER_ORDER:1}</entry>
+    <entry key="app.uias.url-pattern">${DEV_UIAS_URL_PATTERN:/*}</entry>
 </properties>

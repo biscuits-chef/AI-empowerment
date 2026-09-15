@@ -145,3 +145,10 @@ BUSINESS_SEMANTIC_MODEL_VERSION=phase1-v1
 - 使用业务黄金问题集验证答案质量并完成业务签署。
 
 完整技术方案见 `docs/technical-solution-design-v2.md`，V1.0 评审稿仅保留用于历史追溯。详细需求见 `REQUIREMENTS.md`，架构见 `ARCHITECTURE.md`，上线前完成 `docs/operations/production-readiness-checklist.md`。
+
+### 关于内部sdk无法导入的情况
+```text
+参考 lib/README.md
+```
+
+// todo 接入UIAS，创建一个文件夹，专门放内部提供的类的mock类，比如uias-sdk中提供的UIASTomcatFilter，知识库检索的TRSConnection

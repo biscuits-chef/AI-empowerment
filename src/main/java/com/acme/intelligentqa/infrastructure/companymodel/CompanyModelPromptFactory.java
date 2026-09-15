@@ -2,12 +2,12 @@ package com.acme.intelligentqa.infrastructure.companymodel;
 
 import com.acme.intelligentqa.config.CompanyModelProperties;
 import com.acme.intelligentqa.domain.model.BusinessFact;
-import com.acme.intelligentqa.domain.model.ChatMessage;
 import com.acme.intelligentqa.domain.model.KnowledgeChunk;
 import com.acme.intelligentqa.domain.port.out.LanguageModelPort;
+import org.springframework.stereotype.Component;
+
 import java.util.Map;
 import java.util.TreeMap;
-import org.springframework.stereotype.Component;
 
 /**
  * 将用户问题、对话历史和已对账证据组装为受限模型提示词。
@@ -48,14 +48,12 @@ final class CompanyModelPromptFactory {
                     .append("（来源消息=")
                     .append(request.entitySourceMessageIds().get(entity.getKey())).append("）\n");
         }
+
+        // 不再组装历史消息，依赖hiAgent自带的状态管理。防止重复消息导致上下文爆炸
         prompt.append("</已确认实体>\n")
                 .append("证据状态：").append(request.evidenceAssessment().status().name()).append('\n')
-                .append("用户问题：").append(request.question()).append("\n\n")
-                .append("<最近对话>\n");
-        for (final ChatMessage message : request.history()) {
-            prompt.append(message.role().name()).append(": ").append(message.content()).append('\n');
-        }
-        prompt.append("</最近对话>\n<知识库证据>\n");
+                .append("本轮用户问题：").append(request.question()).append("\n\n")
+                .append("<本轮知识库证据>\n");
         for (final KnowledgeChunk chunk : request.knowledge()) {
             prompt.append('[').append(chunk.sourceId()).append("] ")
                     .append(chunk.title()).append("：").append(chunk.content()).append('\n');

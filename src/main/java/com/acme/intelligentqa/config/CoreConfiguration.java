@@ -1,5 +1,6 @@
 package com.acme.intelligentqa.config;
 
+import com.acme.intelligentqa.infrastructure.VectorStoreClient;
 import com.acme.intelligentqa.domain.service.PhaseOneBusinessQueryPlanner;
 import com.acme.intelligentqa.domain.service.PhaseOneBusinessSemanticCatalog;
 import com.acme.intelligentqa.domain.service.PhaseOneBusinessSemanticParser;
@@ -135,5 +136,16 @@ public class CoreConfiguration {
                 .setConnectTimeout(java.time.Duration.ofMillis(properties.connectTimeoutMillis()))
                 .setReadTimeout(java.time.Duration.ofMillis(properties.readTimeoutMillis()))
                 .build();
+    }
+
+    /**
+     * 创建海贝向量检索适配器。
+     *
+     * @param ragProperties 海贝向量数据库配置。
+     * @return 海贝向量检索适配器。
+     */
+    @Bean
+    VectorStoreClient hyKnowledge(final RagProperties ragProperties) {
+        return new VectorStoreClient(ragProperties);
     }
 }
