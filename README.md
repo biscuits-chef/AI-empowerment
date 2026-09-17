@@ -1,6 +1,6 @@
 # 智能问答与智能审核平台（技术代号）
 
-基于 Java 8、Spring Boot 2.7、原生 MyBatis、GoldenDB、Redis、Maven 和 Docker 的企业内部智能服务。正式服务名称尚未确认，当前工程名为 `intelligent-qa-audit-service`。
+基于 Java 17、Spring Boot 2.7、MyBatis-Plus 3.5.5、GoldenDB、Redis、Maven 和 Docker 的企业内部智能服务。正式服务名称尚未确认，当前工程名为 `intelligent-qa-audit-service`。
 
 第一阶段聚焦智能问答：会话管理、接入公司知识库平台查询接口、受控业务数据查询、大模型流式回答、回答反馈和重新发起原问题。知识上传维护由公司知识库平台负责，不在本系统范围内；合同智能比对、申赎确认单核对及合同智能审核保留为后续独立阶段。
 
@@ -19,7 +19,7 @@
 - 冲突时强制展示双源数据并提示人工复核；证据不足或意图低置信度时拒绝猜测。
 - 指代消解和追问：已验证实体可跨历史窗口复用；对象缺失或歧义时返回持久化追问，用户回复候选序号、名称或唯一标识后恢复原意图。
 - 最近有效对话同时传入意图识别和模型请求；结构化实体与待追问状态持久化到 GoldenDB，Token 自适应摘要仍列为上线前任务。
-- GoldenDB 保存会话、问题、回答、状态、反馈和结构化上下文，是事实来源；原生 MyBatis 负责数据访问，Flyway 仍是唯一表结构迁移入口。
+- GoldenDB 保存会话、问题、回答、状态、反馈和结构化上下文，是事实来源；MyBatis-Plus 负责数据访问，Flyway 仍是唯一表结构迁移入口。
 - 2026-09-14 范围调整后一期不支持文件上传：前端不展示入口，后端默认不注册文件控制器，问题请求拒绝非空文件引用。已有文件表和历史附件读取仅用于兼容开发数据及后续扩展。
 - Redis 计划承担跨实例事件重放、协调和限流；当前内存事件适配器仅供本地开发。
 - 禁止大模型生成任意 SQL 并直接执行；一期业务查询通过标准语义字段、受控 Query Plan 和两个固定参数化 MyBatis 语句执行。
@@ -37,7 +37,7 @@ src/main/java/com/acme/intelligentqa/
 ├── application/workflow         # 场景计划、执行上下文、执行器与节点
 ├── adapter/in/web
 ├── adapter/out/persistence
-│   └── mybatis             # 原生 MyBatis Record、具名 Mapper 与显式 SQL
+│   └── mybatis             # MyBatis-Plus Record、Mapper 接口与参数化 XML SQL
 ├── adapter/out/business     # 一期产品快照表固定 MyBatis 查询
 ├── adapter/out/ai
 ├── adapter/out/stream
@@ -55,7 +55,7 @@ src/main/java/com/acme/intelligentqa/
 - 注释必须与代码同步，不逐行复述实现，不保留注释掉的旧代码，不用注释代替清晰命名；协议字段和第三方术语可保留英文。
 - `ChineseDocumentationArchitectureTest` 会扫描生产与测试 Java 源码，遗漏中文声明注释或入参标签时完整构建会失败。
 
-需要 JDK 8 和 Maven 3.9+：
+需要 JDK 17 和 Maven 3.9+：
 
 ```bash
 mvn -B -ntp clean verify
@@ -63,7 +63,7 @@ mvn -B -ntp clean verify
 
 该命令执行 Checkstyle、PMD/CPD、SpotBugs、ArchUnit、JaCoCo、Maven Enforcer、单元测试和集成测试门禁。
 
-当前基线于 2026-09-14 在 OpenJDK 8u452、Maven 3.9.9 上通过完整门禁：160 个单元/架构测试和 3 个集成测试无失败、无错误、无跳过，Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文注释检查、JaCoCo 和可执行 JAR 构建全部成功。回归覆盖一期文件路由关闭、问题附件拒绝、重新生成不复制历史附件，以及双通道场景计划、开发模拟用户、Agent 路由、稳定游标、活动会话删除保护、执行恢复、产品语义查询和持久化边界。本地门禁不替代真实 GoldenDB、Redis、知识库和公司大模型环境验证。
+当前基线于 2026-09-17 在 JDK 17、Maven 3.9.16 上通过完整门禁：171 个单元/架构测试和 6 个集成测试无失败、无错误、无跳过，Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文注释检查、JaCoCo 和可执行 JAR 构建全部成功。回归覆盖一期文件路由关闭、问题附件拒绝、重新生成不复制历史附件，以及双通道场景计划、开发模拟用户、Agent 路由、稳定游标、活动会话删除保护、执行恢复、产品语义查询和持久化边界。本地门禁不替代真实 GoldenDB、Redis、知识库和公司大模型环境验证。
 
 ## 本地运行
 
@@ -91,7 +91,7 @@ Compose 使用 MySQL 8.4 作为 GoldenDB 本地兼容替身，并显式启用演
 
 数据库连接使用对应环境的 `*_DB_URL`、`*_DB_USERNAME` 和 `*_DB_PASSWORD` 注入；连接池等跨环境调优项继续使用 `DB_POOL_*`。完整变量和启动示例见 `docs/operations/environment-configuration.md`。
 
-应用使用 `mybatis-spring-boot-starter` 2.3.2，并显式固定 MyBatis 3.5.19。所有插入、条件更新、Owner 隔离、逻辑删除、联表和有界查询均使用具名 Mapper 与固定参数化 SQL；持久化 Record 是无框架注解的普通 Java 对象，查询字段通过显式 ResultMap 映射。
+应用使用 `mybatis-plus-boot-starter` 3.5.5。单表通用 CRUD 与条件更新使用 `BaseMapper` 和 `LambdaQueryWrapper` / `LambdaUpdateWrapper`；复杂业务查询与联表查询使用具名 Mapper 与固定参数化 SQL。持久化 Record 通过 `@TableName`、`@TableId(type = IdType.AUTO)` 和 `@TableField` 进行显式映射。
 
 开发环境默认启用 `dws_product_info_d` 查询；测试和生产仍默认关闭。生产启用前需完成数据中台全量快照同步、产品数据权限、真实 GoldenDB 与独立只读账号验证：
 

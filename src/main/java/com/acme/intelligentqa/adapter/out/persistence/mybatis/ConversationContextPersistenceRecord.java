@@ -1,15 +1,22 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import java.sql.Timestamp;
 
 /** 与 {@code qa_conversation_context} 表对应的持久化记录。 */
+@TableName("qa_conversation_context")
 public class ConversationContextPersistenceRecord {
 
     /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
     /**
      * 会话 ID。
      */
+    @TableField("conversation_id")
     private String conversationId;
     /** @return 数据库内部自增主键。 */
     public Long getId() { return id; }
@@ -18,6 +25,7 @@ public class ConversationContextPersistenceRecord {
     /**
      * 用户所有者 ID。
      */
+    @TableField("owner_id")
     private String ownerId;
     /**
      * 乐观锁版本号。
@@ -26,14 +34,17 @@ public class ConversationContextPersistenceRecord {
     /**
      * 结构化上下文 JSON。
      */
+    @TableField("state_json")
     private String stateJson;
     /**
      * 来源问题 ID。
      */
+    @TableField("source_question_id")
     private String sourceQuestionId;
     /**
      * 更新时间。
      */
+    @TableField("updated_at")
     private Timestamp updatedAt;
 
     /**

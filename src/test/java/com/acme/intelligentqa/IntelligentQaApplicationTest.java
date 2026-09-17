@@ -86,7 +86,7 @@ class IntelligentQaApplicationTest {
     private RequestMappingHandlerMapping requestMappingHandlerMapping;
 
     /**
-     * 原生 MyBatis 会话工厂。
+     * MyBatis-Plus 会话工厂。
      */
     @Autowired
     private SqlSessionFactory sqlSessionFactory;
@@ -121,11 +121,12 @@ class IntelligentQaApplicationTest {
     }
 
     /**
-     * 验证原生 MyBatis 的安全运行参数与显式 Mapper 已实际装配。
+     * 验证 MyBatis-Plus 的安全运行参数与 Mapper 映射语句已实际装配。
      */
     @Test
-    void configuresNativeMybatisRuntimeAndMapperStatements() {
+    void configuresMybatisPlusRuntimeAndMapperStatements() {
         final org.apache.ibatis.session.Configuration configuration = sqlSessionFactory.getConfiguration();
+        assertTrue(configuration instanceof com.baomidou.mybatisplus.core.MybatisConfiguration);
         assertFalse(configuration.isMapUnderscoreToCamelCase());
         assertEquals(LocalCacheScope.STATEMENT, configuration.getLocalCacheScope());
         assertEquals(Integer.valueOf(100), configuration.getDefaultFetchSize());
@@ -135,10 +136,8 @@ class IntelligentQaApplicationTest {
                 "com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerMapper.insert");
         final MappedStatement eventInsert = configuration.getMappedStatement(
                 "com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerEventMapper.insert");
-        assertTrue(answerInsert.getKeyGenerator()
-                instanceof org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator);
-        assertTrue(eventInsert.getKeyGenerator()
-                instanceof org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator);
+        assertNotNull(answerInsert);
+        assertNotNull(eventInsert);
     }
 
     /**

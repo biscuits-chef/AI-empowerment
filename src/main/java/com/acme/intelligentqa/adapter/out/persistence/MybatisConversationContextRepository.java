@@ -8,6 +8,8 @@ import com.acme.intelligentqa.domain.model.ConversationContext;
 import com.acme.intelligentqa.domain.model.EntityCandidate;
 import com.acme.intelligentqa.domain.model.QueryIntent;
 import com.acme.intelligentqa.domain.port.out.ConversationContextRepositoryPort;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -78,9 +80,12 @@ public class MybatisConversationContextRepository implements ConversationContext
      */
     @Override
     public Optional<ConversationContext> find(final String ownerId, final UUID conversationId) {
+        final LambdaQueryWrapper<ConversationContextPersistenceRecord> query =
+                new LambdaQueryWrapper<ConversationContextPersistenceRecord>()
+                        .eq(ConversationContextPersistenceRecord::getConversationId, conversationId.toString())
+                        .eq(ConversationContextPersistenceRecord::getOwnerId, ownerId);
         try {
-            return Optional.ofNullable(mapper.selectByOwnerAndConversation(
-                    ownerId, conversationId.toString())).map(this::toDomain);
+            return Optional.ofNullable(mapper.selectOne(query)).map(this::toDomain);
         } catch (final DataAccessException exception) {
             throw new PersistenceOperationException("failed to read conversation context", exception);
         }
@@ -107,8 +112,18 @@ public class MybatisConversationContextRepository implements ConversationContext
             }
         }
         final ConversationContextPersistenceRecord record = toRecord(context, expectedVersion + 1L);
+        final LambdaUpdateWrapper<ConversationContextPersistenceRecord> update =
+                new LambdaUpdateWrapper<ConversationContextPersistenceRecord>()
+                        .eq(ConversationContextPersistenceRecord::getConversationId,
+                                context.conversationId().toString())
+                        .eq(ConversationContextPersistenceRecord::getOwnerId, context.ownerId())
+                        .eq(ConversationContextPersistenceRecord::getVersion, expectedVersion)
+                        .set(ConversationContextPersistenceRecord::getVersion, expectedVersion + 1L)
+                        .set(ConversationContextPersistenceRecord::getStateJson, record.getStateJson())
+                        .set(ConversationContextPersistenceRecord::getSourceQuestionId, record.getSourceQuestionId())
+                        .set(ConversationContextPersistenceRecord::getUpdatedAt, record.getUpdatedAt());
         try {
-            return mapper.updateByVersion(record, expectedVersion) == 1;
+            return mapper.update(null, update) == 1;
         } catch (final DataAccessException exception) {
             throw new PersistenceOperationException("failed to update conversation context", exception);
         }

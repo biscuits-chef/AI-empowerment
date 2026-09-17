@@ -44,17 +44,6 @@
         a.cancel_error_code, a.cancel_requested_at, a.cancelled_at
     </sql>
 
-    <insert id="insert"
-            parameterType="com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerPersistenceRecord"
-            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO qa_answer
-            (public_id, conversation_id, question_id, owner_id, idempotency_key, trace_id,
-             regenerated_from_answer_id, status, content, created_at)
-        VALUES
-            (#{publicId}, #{conversationId}, #{questionId}, #{ownerId}, #{idempotencyKey}, #{traceId},
-             #{regeneratedFromAnswerId}, #{status}, #{content}, #{createdAt})
-    </insert>
-
     <select id="selectByIdempotencyKey" resultMap="answerResult">
         SELECT <include refid="answerColumns"/>
         FROM qa_answer a
@@ -83,36 +72,5 @@
           AND c.deleted_at IS NULL
     </select>
 
-    <update id="transitionStatus">
-        UPDATE qa_answer
-        SET status = #{status}
-        WHERE public_id = #{id}
-          AND status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING')
-    </update>
-
-    <update id="recordAppConversationId">
-        UPDATE qa_answer
-        SET app_conversation_id = #{appConversationId}
-        WHERE public_id = #{id}
-          AND status IN ('GENERATING', 'CANCEL_REQUESTED')
-          AND (app_conversation_id IS NULL OR app_conversation_id = #{appConversationId})
-    </update>
-
-    <update id="savePartial">
-        UPDATE qa_answer
-        SET content = #{content}
-        WHERE public_id = #{id}
-          AND status = 'GENERATING'
-    </update>
-
-    <update id="finalizeAnswer">
-        UPDATE qa_answer
-        SET status = #{status},
-            content = #{content},
-            error_code = #{errorCode,jdbcType=VARCHAR},
-            completed_at = #{completedAt}
-        WHERE public_id = #{id}
-          AND status IN ('PENDING', 'RETRIEVING', 'QUERYING', 'GENERATING')
-    </update>
-
 </mapper>
+

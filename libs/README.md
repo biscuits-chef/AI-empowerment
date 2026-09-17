@@ -16,25 +16,18 @@
 
 ## 使用方法
 
-### 1. 修改依赖配置
-在 `pom.xml` 中将相关的Maven依赖改为使用本地JAR包：
+### 1. Profile 环境配置
+项目已在 `pom.xml` 中通过 Maven Profile 区分环境：
+- **`dev`（开发环境，默认激活）**：自动引用本 `libs/` 目录下的本地 JAR（`system` 作用域）。本地在 IDEA 中直接刷新即可开发调试，无需额外配置。
+- **`test` / `prod` / `repo`（测试与生产环境）**：从公司私有 Maven 仓库拉取远程依赖（`compile` 作用域），构建打包时通过 `-P prod`（或 `-P test` / `-P repo`）切换。
 
-```xml
-<dependency>
-    <groupId>com.spdb.speedstudio</groupId>
-    <artifactId>uias-spring-boot-starter</artifactId>
-    <version>1.0.7-RELEASE</version>
-    <scope>system</scope>
-    <systemPath>${project.basedir}/libs/speedstudio/uias-spring-boot-starter/1.0.7-RELEASE/uias-spring-boot-starter-1.0.7-RELEASE.jar</systemPath>
-</dependency>
+示例打包命令：
+```bash
+# 本地开发打包（默认使用本地 JAR）
+mvn clean package
 
-<dependency>
-    <groupId>com.spdb.speedstudio</groupId>
-    <artifactId>uias-sdk</artifactId>
-    <version>1.0.7-RELEASE</version>
-    <scope>system</scope>
-    <systemPath>${project.basedir}/libs/speedstudio/uias-sdk/1.0.7-RELEASE/uias-sdk-1.0.7-RELEASE.jar</systemPath>
-</dependency>
+# 生产环境打包（强制使用远程 Maven 仓库）
+mvn clean package -P prod
 ```
 
 ### 2. 目录结构规范

@@ -23,48 +23,9 @@
         <result property="deletedAt" column="deleted_at"/>
     </resultMap>
 
-    <sql id="temporaryFileColumns">
-        id, public_id, conversation_id, owner_id, idempotency_key, original_name, content_type,
-        size_bytes, sha256, object_key, usage_type, status, created_at, updated_at, deleted_at
-    </sql>
-
-    <insert id="insert"
-            parameterType="com.acme.intelligentqa.adapter.out.persistence.mybatis.TemporaryFilePersistenceRecord"
-            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO qa_file
-            (public_id, conversation_id, owner_id, idempotency_key, original_name, content_type,
-             size_bytes, sha256, object_key, usage_type, status, created_at, updated_at, deleted_at)
-        VALUES
-            (#{publicId}, #{conversationId}, #{ownerId}, #{idempotencyKey}, #{originalName}, #{contentType},
-             #{sizeBytes}, #{sha256}, #{objectKey}, #{usageType}, #{status}, #{createdAt}, #{updatedAt}, #{deletedAt})
-    </insert>
-
-    <select id="selectByIdempotencyKey" resultMap="temporaryFileResult">
-        SELECT <include refid="temporaryFileColumns"/>
-        FROM qa_file
-        WHERE owner_id = #{ownerId}
-          AND idempotency_key = #{idempotencyKey}
-          AND deleted_at IS NULL
-    </select>
-
-    <select id="selectById" resultMap="temporaryFileResult">
-        SELECT <include refid="temporaryFileColumns"/>
-        FROM qa_file
-        WHERE public_id = #{id}
-          AND deleted_at IS NULL
-    </select>
-
-    <select id="selectOwnedActive" resultMap="temporaryFileResult">
-        SELECT <include refid="temporaryFileColumns"/>
-        FROM qa_file
-        WHERE public_id = #{id}
-          AND owner_id = #{ownerId}
-          AND conversation_id = #{conversationId}
-          AND deleted_at IS NULL
-    </select>
-
     <select id="selectActive" resultMap="temporaryFileResult">
-        SELECT <include refid="temporaryFileColumns"/>
+        SELECT id, public_id, conversation_id, owner_id, idempotency_key, original_name, content_type,
+               size_bytes, sha256, object_key, usage_type, status, created_at, updated_at, deleted_at
         FROM qa_file
         WHERE owner_id = #{ownerId}
           AND conversation_id = #{conversationId}
@@ -73,20 +34,5 @@
         LIMIT #{limit}
     </select>
 
-    <update id="updateStatus">
-        UPDATE qa_file
-        SET status = #{status}, updated_at = #{updatedAt}
-        WHERE public_id = #{id}
-          AND deleted_at IS NULL
-    </update>
-
-    <update id="markDeletePending">
-        UPDATE qa_file
-        SET status = 'DELETE_PENDING', updated_at = #{deletedAt}, deleted_at = #{deletedAt}
-        WHERE public_id = #{id}
-          AND owner_id = #{ownerId}
-          AND conversation_id = #{conversationId}
-          AND deleted_at IS NULL
-    </update>
-
 </mapper>
+

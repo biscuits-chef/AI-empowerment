@@ -47,8 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
         "spring.datasource.url=jdbc:h2:mem:qa-persistence;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "mybatis.mapper-locations=classpath*:/mapper/**/*.xml",
-        "mybatis.configuration.map-underscore-to-camel-case=false",
+        "mybatis-plus.mapper-locations=classpath*:/mapper/**/*.xml",
+        "mybatis-plus.configuration.map-underscore-to-camel-case=false",
         "app.qa.demo-mode=true",
         "app.qa.cancellation.scan-delay-millis=60000"
 })

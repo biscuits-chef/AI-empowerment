@@ -23,7 +23,7 @@ class HexagonalArchitectureTest {
             .that().resideInAPackage("..domain..")
             .should().dependOnClassesThat()
             .resideInAnyPackage(
-                    "org.springframework..", "org.apache.ibatis..", "org.mybatis..",
+                    "org.springframework..", "org.apache.ibatis..", "org.mybatis..", "com.baomidou..",
                     "javax..", "jakarta..", "..adapter..", "..application..");
 
     /**
@@ -33,7 +33,7 @@ class HexagonalArchitectureTest {
     static final ArchRule APPLICATION_DOES_NOT_DEPEND_ON_ADAPTERS = noClasses()
             .that().resideInAPackage("..application..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..adapter..", "org.apache.ibatis..", "org.mybatis..");
+                    "..adapter..", "org.apache.ibatis..", "org.mybatis..", "com.baomidou..");
 
     /**
      * 按基础设施职责命名适配器的架构规则。

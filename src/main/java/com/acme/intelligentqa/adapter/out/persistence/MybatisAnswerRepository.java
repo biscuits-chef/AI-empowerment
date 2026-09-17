@@ -10,6 +10,8 @@ import com.acme.intelligentqa.common.error.PersistenceOperationException;
 import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.out.AnswerRepositoryPort;
+import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -22,7 +24,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 基于原生 MyBatis 的回答、消息、反馈和状态持久化适配器。
+ * 基于 MyBatis-Plus 的回答、消息、反馈和状态持久化适配器。
  */
 @Repository
 public class MybatisAnswerRepository implements AnswerRepositoryPort {
@@ -186,8 +188,12 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
      */
     @Override
     public boolean transitionStatus(final UUID answerId, final AnswerSnapshot.Status status) {
-        return execute(() -> answerMapper.transitionStatus(answerId.toString(), status.name()),
-                "failed to update answer status") == 1;
+        final LambdaUpdateWrapper<AnswerPersistenceRecord> update =
+                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
+                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
+                        .in(AnswerPersistenceRecord::getStatus, activeStatuses())
+                        .set(AnswerPersistenceRecord::getStatus, status.name());
+        return execute(() -> answerMapper.update(null, update), "failed to update answer status") == 1;
     }
 
     /**
@@ -204,8 +210,19 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
         if (appConversationId == null || appConversationId.trim().isEmpty()) {
             throw new IllegalArgumentException("appConversationId must not be blank");
         }
+        final LambdaUpdateWrapper<AnswerPersistenceRecord> update =
+                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
+                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
+                        .in(AnswerPersistenceRecord::getStatus, java.util.Arrays.asList(
+                                AnswerSnapshot.Status.GENERATING.name(),
+                                AnswerSnapshot.Status.CANCEL_REQUESTED.name()))
+                        .and(wrapper -> wrapper
+                                .isNull(AnswerPersistenceRecord::getAppConversationId)
+                                .or()
+                                .eq(AnswerPersistenceRecord::getAppConversationId, appConversationId))
+                        .set(AnswerPersistenceRecord::getAppConversationId, appConversationId);
         return execute(
-                () -> answerMapper.recordAppConversationId(answerId.toString(), appConversationId),
+                () -> answerMapper.update(null, update),
                 "failed to record HiAgent app conversation id") == 1;
     }
 
@@ -221,13 +238,22 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
     @Override
     @Transactional
     public boolean savePartial(final UUID answerId, final String content) {
+        final LambdaUpdateWrapper<AnswerPersistenceRecord> answerUpdate =
+                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
+                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
+                        .eq(AnswerPersistenceRecord::getStatus, AnswerSnapshot.Status.GENERATING.name())
+                        .set(AnswerPersistenceRecord::getContent, content);
         final int updated = execute(
-                () -> answerMapper.savePartial(answerId.toString(), content), "failed to save partial answer");
+                () -> answerMapper.update(null, answerUpdate), "failed to save partial answer");
         if (updated == 0) {
             return false;
         }
+        final LambdaUpdateWrapper<ChatMessagePersistenceRecord> messageUpdate =
+                new LambdaUpdateWrapper<ChatMessagePersistenceRecord>()
+                        .eq(ChatMessagePersistenceRecord::getPublicId, answerId.toString())
+                        .set(ChatMessagePersistenceRecord::getContent, content);
         requireOne(execute(
-                        () -> messageMapper.updateContent(answerId.toString(), content),
+                        () -> messageMapper.update(null, messageUpdate),
                         "failed to save partial answer message"),
                 "failed to save partial answer message");
         return true;
@@ -337,14 +363,24 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
             final String content,
             final String errorCode,
             final Instant completedAt) {
-        final int updated = execute(() -> answerMapper.finalizeAnswer(
-                answerId.toString(), status.name(), content, errorCode, Timestamp.from(completedAt)),
-                "failed to finalize answer");
+        final LambdaUpdateWrapper<AnswerPersistenceRecord> answerUpdate =
+                new LambdaUpdateWrapper<AnswerPersistenceRecord>()
+                        .eq(AnswerPersistenceRecord::getPublicId, answerId.toString())
+                        .in(AnswerPersistenceRecord::getStatus, activeStatuses())
+                        .set(AnswerPersistenceRecord::getStatus, status.name())
+                        .set(AnswerPersistenceRecord::getContent, content)
+                        .set(AnswerPersistenceRecord::getErrorCode, errorCode)
+                        .set(AnswerPersistenceRecord::getCompletedAt, Timestamp.from(completedAt));
+        final LambdaUpdateWrapper<ChatMessagePersistenceRecord> messageUpdate =
+                new LambdaUpdateWrapper<ChatMessagePersistenceRecord>()
+                        .eq(ChatMessagePersistenceRecord::getPublicId, answerId.toString())
+                        .set(ChatMessagePersistenceRecord::getContent, content);
+        final int updated = execute(() -> answerMapper.update(null, answerUpdate), "failed to finalize answer");
         if (updated == 0) {
             return false;
         }
         requireOne(execute(
-                        () -> messageMapper.updateContent(answerId.toString(), content),
+                        () -> messageMapper.update(null, messageUpdate),
                         "failed to finalize answer message"),
                 "failed to finalize answer message");
         return true;
@@ -358,9 +394,14 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
      * @param now 当前时间。
      */
     private void touchConversation(final UUID conversationId, final Instant now) {
+        final LambdaUpdateWrapper<ConversationPersistenceRecord> update =
+                new LambdaUpdateWrapper<ConversationPersistenceRecord>()
+                        .eq(ConversationPersistenceRecord::getPublicId, conversationId.toString())
+                        .isNull(ConversationPersistenceRecord::getDeletedAt)
+                        .set(ConversationPersistenceRecord::getUpdatedAt, Timestamp.from(now));
         requireOne(execute(
-                () -> conversationMapper.touch(conversationId.toString(), Timestamp.from(now)),
-                "failed to update conversation timestamp"),
+                        () -> conversationMapper.update(null, update),
+                        "failed to update conversation timestamp"),
                 "failed to update conversation timestamp");
     }
 
@@ -487,4 +528,18 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
         }
     }
 
+    /**
+     * 处理允许继续生成的非终态集合。
+     *
+     * @return 允许继续生成的非终态集合。
+     */
+    private static java.util.List<String> activeStatuses() {
+        return java.util.Arrays.asList(
+                AnswerSnapshot.Status.PENDING.name(),
+                AnswerSnapshot.Status.RETRIEVING.name(),
+                AnswerSnapshot.Status.QUERYING.name(),
+                AnswerSnapshot.Status.GENERATING.name());
+    }
+
 }
+

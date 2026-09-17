@@ -10,9 +10,11 @@ import com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersist
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationContextPersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.TemporaryFilePersistenceRecord;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -24,13 +26,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.support.EncodedResource;
@@ -89,45 +87,34 @@ class DatabasePrimaryKeyPolicyIT {
     }
 
     /**
-     * 验证原生 MyBatis 插入语句统一回填数据库生成的 id。
+     * 验证 MyBatis-Plus 记录只把数据库生成的 id 声明为物理主键。
      *
      * @throws NoSuchFieldException 持久化记录缺少约定字段时抛出。
-     * @throws IOException Mapper 资源读取失败时抛出。
      */
     @Test
-    void persistenceRecordsMapDatabaseGeneratedId() throws NoSuchFieldException, IOException {
-        for (final Class<?> recordType : mappedRecordTypes().keySet()) {
-            assertEquals(Long.class, recordType.getDeclaredField("id").getType(), recordType.getSimpleName());
-        }
-        for (final String mapperResource : generatedKeyMapperResources()) {
-            final String mapper = resource(mapperResource);
-            assertTrue(mapper.contains("useGeneratedKeys=\"true\""), mapperResource);
-            assertTrue(mapper.contains("keyProperty=\"id\""), mapperResource);
-            assertTrue(mapper.contains("keyColumn=\"id\""), mapperResource);
-        }
+    void persistenceRecordsMapDatabaseGeneratedId() throws NoSuchFieldException {
+        assertTableId(ConversationPersistenceRecord.class, "id");
+        assertTableId(ChatMessagePersistenceRecord.class, "id");
+        assertTableId(AnswerPersistenceRecord.class, "id");
+        assertTableId(ConversationContextPersistenceRecord.class, "id");
+        assertTableId(TemporaryFilePersistenceRecord.class, "id");
+        assertTableId(AnswerEventPersistenceRecord.class, "id");
     }
 
     /**
      * 验证持久化字段名由数据库列名去除下划线并转为小驼峰形式。
-     *
-     * @throws IOException Mapper 资源读取失败时抛出。
      */
     @Test
-    void persistenceRecordFieldsUseDatabaseColumnCamelCaseNames() throws IOException {
-        final Pattern mappingPattern = Pattern.compile(
-                "property=\"([^\"]+)\"\\s+column=\"([^\"]+)\"");
-        for (final Map.Entry<Class<?>, String> entry : mappedRecordTypes().entrySet()) {
-            final Class<?> recordType = entry.getKey();
-            final Matcher mappings = mappingPattern.matcher(resource(entry.getValue()));
-            final Set<String> mappedProperties = new LinkedHashSet<String>();
-            while (mappings.find()) {
-                assertEquals(toCamelCase(mappings.group(2)), mappings.group(1), recordType.getSimpleName());
-                mappedProperties.add(mappings.group(1));
-            }
+    void persistenceRecordFieldsUseDatabaseColumnCamelCaseNames() {
+        for (final Class<?> recordType : mappedRecordTypes()) {
             for (final Field field : recordType.getDeclaredFields()) {
-                if (!Modifier.isStatic(field.getModifiers())) {
-                    assertTrue(mappedProperties.contains(field.getName()),
-                            recordType.getSimpleName() + " 缺少显式 ResultMap 字段 " + field.getName());
+                final TableId tableId = field.getAnnotation(TableId.class);
+                if (tableId != null) {
+                    assertEquals(toCamelCase(tableId.value()), field.getName(), recordType.getSimpleName());
+                }
+                final TableField tableField = field.getAnnotation(TableField.class);
+                if (tableField != null && tableField.exist() && !tableField.value().isEmpty()) {
+                    assertEquals(toCamelCase(tableField.value()), field.getName(), recordType.getSimpleName());
                 }
             }
         }
@@ -241,34 +228,34 @@ class DatabasePrimaryKeyPolicyIT {
     }
 
     /**
-     * 返回受数据库字段命名约束的原生 MyBatis 持久化记录与 Mapper 资源。
+     * 断言持久化字段映射为数据库自增 id。
      *
-     * @return 持久化记录类型到 Mapper 资源的映射。
+     * @param recordType 持久化记录类型。
+     * @param fieldName Java 字段名。
+     * @throws NoSuchFieldException 持久化记录缺少约定字段时抛出。
      */
-    private Map<Class<?>, String> mappedRecordTypes() {
-        final Map<Class<?>, String> result = new LinkedHashMap<Class<?>, String>();
-        result.put(ConversationPersistenceRecord.class, "mapper/ConversationMapper.xml");
-        result.put(ChatMessagePersistenceRecord.class, "mapper/ConversationMapper.xml");
-        result.put(AnswerPersistenceRecord.class, "mapper/AnswerMapper.xml");
-        result.put(ConversationContextPersistenceRecord.class, "mapper/ConversationContextMapper.xml");
-        result.put(TemporaryFilePersistenceRecord.class, "mapper/TemporaryFileMapper.xml");
-        result.put(AnswerEventPersistenceRecord.class, "mapper/AnswerEventMapper.xml");
-        return result;
+    private void assertTableId(final Class<?> recordType, final String fieldName)
+            throws NoSuchFieldException {
+        final Field field = recordType.getDeclaredField(fieldName);
+        final TableId annotation = field.getAnnotation(TableId.class);
+        assertTrue(annotation != null, recordType.getSimpleName() + " 缺少 @TableId");
+        assertEquals("id", annotation.value(), recordType.getSimpleName());
+        assertEquals(IdType.AUTO, annotation.type(), recordType.getSimpleName());
     }
 
     /**
-     * 返回必须回填自增主键的原生 MyBatis 插入 Mapper 资源。
+     * 返回受数据库字段命名约束的 MyBatis-Plus 持久化记录类型。
      *
-     * @return Mapper 资源集合。
+     * @return 持久化记录类型列表。
      */
-    private Set<String> generatedKeyMapperResources() {
-        return new LinkedHashSet<String>(Arrays.asList(
-                "mapper/ConversationMapper.xml",
-                "mapper/ChatMessageMapper.xml",
-                "mapper/AnswerMapper.xml",
-                "mapper/ConversationContextMapper.xml",
-                "mapper/TemporaryFileMapper.xml",
-                "mapper/AnswerEventMapper.xml"));
+    private List<Class<?>> mappedRecordTypes() {
+        return Arrays.<Class<?>>asList(
+                ConversationPersistenceRecord.class,
+                ChatMessagePersistenceRecord.class,
+                AnswerPersistenceRecord.class,
+                ConversationContextPersistenceRecord.class,
+                TemporaryFilePersistenceRecord.class,
+                AnswerEventPersistenceRecord.class);
     }
 
     /** @return 主键切换后必须继续成立的业务唯一键。 */
