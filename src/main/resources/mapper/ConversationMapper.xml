@@ -42,32 +42,6 @@
         title, created_at, updated_at, deleted_at
     </sql>
 
-    <insert id="insert"
-            parameterType="com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord"
-            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO qa_conversation
-            (public_id, owner_id, creation_idempotency_key, agent_type, title, created_at, updated_at, deleted_at)
-        VALUES
-            (#{publicId}, #{ownerId}, #{creationIdempotencyKey}, #{agentType}, #{title},
-             #{createdAt}, #{updatedAt}, #{deletedAt})
-    </insert>
-
-    <select id="selectByCreationKey" resultMap="conversationResult">
-        SELECT <include refid="conversationColumns"/>
-        FROM qa_conversation
-        WHERE owner_id = #{ownerId}
-          AND creation_idempotency_key = #{idempotencyKey}
-          AND deleted_at IS NULL
-    </select>
-
-    <select id="selectActive" resultMap="conversationResult">
-        SELECT <include refid="conversationColumns"/>
-        FROM qa_conversation
-        WHERE public_id = #{id}
-          AND owner_id = #{ownerId}
-          AND deleted_at IS NULL
-    </select>
-
     <select id="selectByOwner" resultMap="conversationResult">
         SELECT <include refid="conversationColumns"/>
         FROM qa_conversation
@@ -130,27 +104,5 @@
         ORDER BY qf.created_at ASC, qf.file_id ASC
     </select>
 
-    <update id="rename">
-        UPDATE qa_conversation
-        SET title = #{title}, updated_at = #{updatedAt}
-        WHERE public_id = #{id}
-          AND owner_id = #{ownerId}
-          AND deleted_at IS NULL
-    </update>
-
-    <update id="softDelete">
-        UPDATE qa_conversation
-        SET deleted_at = #{deletedAt}, updated_at = #{deletedAt}
-        WHERE public_id = #{id}
-          AND owner_id = #{ownerId}
-          AND deleted_at IS NULL
-    </update>
-
-    <update id="touch">
-        UPDATE qa_conversation
-        SET updated_at = #{updatedAt}
-        WHERE public_id = #{id}
-          AND deleted_at IS NULL
-    </update>
-
 </mapper>
+

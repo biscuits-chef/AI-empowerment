@@ -93,20 +93,17 @@ public final class RagProperties {
             final int vectorCandidates,
             final int queryOffset,
             final int queryLimit) {
-        this.urls = requireNonEmpty(urls, "urls");
-        this.username = requireNonEmpty(username, "username");
-        this.password = requireNonEmpty(password, "password");
-        this.database = requireNonEmpty(database, "database");
-        this.collection = requireNonEmpty(collection, "collection");
-        this.sortMethod = requireNonEmpty(sortMethod, "sort-method");
-        this.readColumns = requireNonEmpty(readColumns, "read-columns");
-        requirePositive(vectorCandidates, "vector-candidates");
-        requirePositive(queryOffset, "query-offset");
-        requirePositive(queryLimit, "query-limit");
+        this.urls = defaultIfBlank(urls, "http://localhost:5555");
+        this.username = defaultIfBlank(username, "trs");
+        this.password = defaultIfBlank(password, "trs123");
+        this.database = defaultIfBlank(database, "demo");
+        this.collection = defaultIfBlank(collection, "demo");
+        this.sortMethod = defaultIfBlank(sortMethod, "RELEVANCE");
+        this.readColumns = defaultIfBlank(readColumns, "标题;正文;");
         this.strongConsistency = strongConsistency;
-        this.vectorCandidates = vectorCandidates;
-        this.queryOffset = queryOffset;
-        this.queryLimit = queryLimit;
+        this.vectorCandidates = vectorCandidates <= 0 ? 100 : vectorCandidates;
+        this.queryOffset = Math.max(0, queryOffset);
+        this.queryLimit = queryLimit <= 0 ? 100 : queryLimit;
     }
 
     /**
@@ -209,28 +206,16 @@ public final class RagProperties {
     }
 
     /**
-     * 校验字符串非空。
+     * 若字符串为空则使用缺省默认值。
      *
      * @param value 输入值。
-     * @param propertyName 属性名称。
-     * @return 规范化后的字符串。
+     * @param defaultValue 缺省默认值。
+     * @return 规范化后的非空字符串。
      */
-    private static String requireNonEmpty(final String value, final String propertyName) {
+    private static String defaultIfBlank(final String value, final String defaultValue) {
         if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException("app.rag." + propertyName + " must not be blank");
+            return defaultValue;
         }
         return value.trim();
-    }
-
-    /**
-     * 校验数值必须为正数。
-     *
-     * @param value 输入值。
-     * @param propertyName 属性名称。
-     */
-    private static void requirePositive(final int value, final String propertyName) {
-        if (value <= 0) {
-            throw new IllegalArgumentException("app.rag." + propertyName + " must be positive");
-        }
     }
 }

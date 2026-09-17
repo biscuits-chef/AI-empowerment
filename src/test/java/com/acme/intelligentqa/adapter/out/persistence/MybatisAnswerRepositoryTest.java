@@ -3,7 +3,7 @@ package com.acme.intelligentqa.adapter.out.persistence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -13,17 +13,30 @@ import com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerPersistenceR
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessageMapper;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationMapper;
+import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord;
 import com.acme.intelligentqa.common.error.PersistenceOperationException;
-import java.sql.Timestamp;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import java.time.Instant;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.QueryTimeoutException;
 
 /**
- * 验证回答原生 MyBatis 持久化适配器的异常边界。
+ * 验证回答 MyBatis-Plus 持久化适配器的异常边界。
  */
 class MybatisAnswerRepositoryTest {
+
+    /**
+     * 初始化 MyBatis-Plus 实体表信息元数据缓存。
+     */
+    @BeforeAll
+    static void initTableInfo() {
+        final org.apache.ibatis.builder.MapperBuilderAssistant assistant =
+                new org.apache.ibatis.builder.MapperBuilderAssistant(new MybatisConfiguration(), "");
+        TableInfoHelper.initTableInfo(assistant, ConversationPersistenceRecord.class);
+    }
 
     /**
      * 验证会话时间更新的数据访问异常被转换为稳定的持久化异常。
@@ -39,7 +52,7 @@ class MybatisAnswerRepositoryTest {
 
         when(answerMapper.insert(any(AnswerPersistenceRecord.class))).thenReturn(1);
         when(messageMapper.insert(any(ChatMessagePersistenceRecord.class))).thenReturn(1);
-        when(conversationMapper.touch(anyString(), any(Timestamp.class)))
+        when(conversationMapper.update(isNull(), any()))
                 .thenThrow(new QueryTimeoutException("database detail must remain internal"));
 
         final PersistenceOperationException exception = assertThrows(

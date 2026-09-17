@@ -18,13 +18,14 @@
     <description>Enterprise intelligent question answering and review service</description>
 
     <properties>
-        <java.version>8</java.version>
+        <java.version>17</java.version>
         <archunit.version>1.0.1</archunit.version>
         <javaparser.version>3.25.5</javaparser.version>
         <obs-sdk.version>3.23.9</obs-sdk.version>
         <mysql-connector.version>8.0.33</mysql-connector.version>
-        <mybatis-spring-boot.version>2.3.2</mybatis-spring-boot.version>
-        <mybatis.version>3.5.15</mybatis.version>
+        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <uias.version>1.0.7-RELEASE</uias.version>
+        <esf.version>3.2-RELEASE</esf.version>
         <checkstyle.version>8.45.1</checkstyle.version>
         <jacoco.version>0.8.12</jacoco.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
@@ -34,16 +35,6 @@
         <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
         <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.mybatis</groupId>
-                <artifactId>mybatis</artifactId>
-                <version>${mybatis.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -81,14 +72,9 @@
             <artifactId>jakarta.el</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>${mybatis-spring-boot.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mybatis</groupId>
-            <artifactId>mybatis</artifactId>
-            <version>3.5.15</version>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <version>${mybatis-plus.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -164,52 +150,7 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.spdb.speedstudio</groupId>
-            <artifactId>uias-spring-boot-starter</artifactId>
-            <version>1.0.7-RELEASE</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/speedstudio/uias-spring-boot-starter/1.0.7-RELEASE/uias-spring-boot-starter-1.0.7-RELEASE.jar</systemPath>
-            <exclusions>
-                <exclusion>
-                    <artifactId>asm</artifactId>
-                    <groupId>org.ow2.asm</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>guava</artifactId>
-                    <groupId>com.google.guava</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>commons-lang</artifactId>
-                    <groupId>commons-lang</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>commons-httpclient</artifactId>
-                    <groupId>commons-httpclient</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>commons-logging</artifactId>
-                    <groupId>commons-logging</groupId>
-                </exclusion>
-
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.spdb.speedstudio</groupId>
-            <artifactId>uias-sdk</artifactId>
-            <version>1.0.7-RELEASE</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/speedstudio/uias-sdk/1.0.7-RELEASE/uias-sdk-1.0.7-RELEASE.jar</systemPath>
-        </dependency>
-
-        <dependency>
-            <groupId>com.trs</groupId>
-            <artifactId>esf-sdk</artifactId>
-            <version>3.2-RELEASE</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/esf/esf-sdk/3.2-RELEASE/esf-sdk-3.2-RELEASE.jar</systemPath>
-        </dependency>
+        <!-- UIAS 和 ESF 依赖已配置在 profiles 中：dev 环境走本地 libs/ 目录，其他环境走 Maven 仓库 -->
 
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -227,6 +168,24 @@
             <groupId>commons-httpclient</groupId>
             <artifactId>commons-httpclient</artifactId>
             <version>3.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpmime</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.2</version>
         </dependency>
 
 
@@ -270,8 +229,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>17</source>
+                    <target>17</target>
                     <parameters>true</parameters>
                     <compilerArgs>
                         <arg>-Xlint:all</arg>
@@ -288,14 +247,13 @@
                         <goals><goal>enforce</goal></goals>
                         <configuration>
                             <rules>
-                                <requireJavaVersion><version>[1.8,1.9)</version></requireJavaVersion>
+                                <requireJavaVersion><version>[17,)</version></requireJavaVersion>
                                 <requireMavenVersion><version>[3.9,)</version></requireMavenVersion>
                                 <dependencyConvergence/>
                                 <bannedDependencies>
                                     <excludes>
                                         <exclude>org.springframework.boot:spring-boot-starter-tomcat</exclude>
                                         <exclude>org.apache.tomcat.embed:*</exclude>
-                                        <exclude>com.baomidou:*</exclude>
                                     </excludes>
                                     <searchTransitive>true</searchTransitive>
                                 </bannedDependencies>
@@ -337,7 +295,7 @@
                     <rulesets><ruleset>config/pmd/pmd-ruleset.xml</ruleset></rulesets>
                     <failOnViolation>true</failOnViolation>
                     <printFailingErrors>true</printFailingErrors>
-                    <targetJdk>1.8</targetJdk>
+                    <targetJdk>17</targetJdk>
                 </configuration>
                 <executions>
                     <execution>
@@ -415,4 +373,237 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- 开发环境：走 libs/ 目录下的本地 system jar（默认激活） -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>env</name>
+                    <value>dev</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-spring-boot-starter</artifactId>
+                    <version>${uias.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/speedstudio/uias-spring-boot-starter/1.0.7-RELEASE/uias-spring-boot-starter-1.0.7-RELEASE.jar</systemPath>
+                    <exclusions>
+                        <exclusion>
+                            <artifactId>asm</artifactId>
+                            <groupId>org.ow2.asm</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>guava</artifactId>
+                            <groupId>com.google.guava</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-lang</artifactId>
+                            <groupId>commons-lang</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-httpclient</artifactId>
+                            <groupId>commons-httpclient</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-logging</artifactId>
+                            <groupId>commons-logging</groupId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-sdk</artifactId>
+                    <version>${uias.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/speedstudio/uias-sdk/1.0.7-RELEASE/uias-sdk-1.0.7-RELEASE.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.esf</groupId>
+                    <artifactId>esf-sdk</artifactId>
+                    <version>${esf.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/esf/esf-sdk/3.2-RELEASE/esf-sdk-3.2-RELEASE.jar</systemPath>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- 测试环境：走公司 Maven 远程仓库 -->
+        <profile>
+            <id>test</id>
+            <activation>
+                <property>
+                    <name>env</name>
+                    <value>test</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-spring-boot-starter</artifactId>
+                    <version>${uias.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <artifactId>asm</artifactId>
+                            <groupId>org.ow2.asm</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>guava</artifactId>
+                            <groupId>com.google.guava</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-lang</artifactId>
+                            <groupId>commons-lang</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-httpclient</artifactId>
+                            <groupId>commons-httpclient</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-logging</artifactId>
+                            <groupId>commons-logging</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.apache.tomcat.embed</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-sdk</artifactId>
+                    <version>${uias.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.apache.tomcat.embed</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.esf</groupId>
+                    <artifactId>esf-sdk</artifactId>
+                    <version>${esf.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- 生产环境：走公司 Maven 远程仓库 -->
+        <profile>
+            <id>prod</id>
+            <activation>
+                <property>
+                    <name>env</name>
+                    <value>prod</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-spring-boot-starter</artifactId>
+                    <version>${uias.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <artifactId>asm</artifactId>
+                            <groupId>org.ow2.asm</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>guava</artifactId>
+                            <groupId>com.google.guava</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-lang</artifactId>
+                            <groupId>commons-lang</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-httpclient</artifactId>
+                            <groupId>commons-httpclient</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-logging</artifactId>
+                            <groupId>commons-logging</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.apache.tomcat.embed</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-sdk</artifactId>
+                    <version>${uias.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.apache.tomcat.embed</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.esf</groupId>
+                    <artifactId>esf-sdk</artifactId>
+                    <version>${esf.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- 远程仓库通用 Profile：通过 -P repo 显式启用走远程 Maven 仓库 -->
+        <profile>
+            <id>repo</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-spring-boot-starter</artifactId>
+                    <version>${uias.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <artifactId>asm</artifactId>
+                            <groupId>org.ow2.asm</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>guava</artifactId>
+                            <groupId>com.google.guava</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-lang</artifactId>
+                            <groupId>commons-lang</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-httpclient</artifactId>
+                            <groupId>commons-httpclient</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <artifactId>commons-logging</artifactId>
+                            <groupId>commons-logging</groupId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.apache.tomcat.embed</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.speedstudio</groupId>
+                    <artifactId>uias-sdk</artifactId>
+                    <version>${uias.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.apache.tomcat.embed</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>com.spdb.esf</groupId>
+                    <artifactId>esf-sdk</artifactId>
+                    <version>${esf.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

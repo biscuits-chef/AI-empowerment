@@ -12,6 +12,8 @@ import com.acme.intelligentqa.domain.model.Conversation;
 import com.acme.intelligentqa.domain.model.MessageAttachment;
 import com.acme.intelligentqa.domain.model.TemporaryFile;
 import com.acme.intelligentqa.domain.port.out.ConversationRepositoryPort;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -28,7 +30,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
 /**
- * 基于原生 MyBatis 持久化会话并按 Owner 查询有界历史。
+ * 基于 MyBatis-Plus 持久化会话并按 Owner 查询有界历史。
  */
 @Repository
 public class MybatisConversationRepository implements ConversationRepositoryPort {
@@ -115,7 +117,10 @@ public class MybatisConversationRepository implements ConversationRepositoryPort
             final String ownerId,
             final String idempotencyKey) {
         final ConversationPersistenceRecord record = execute(
-                () -> conversationMapper.selectByCreationKey(ownerId, idempotencyKey),
+                () -> conversationMapper.selectOne(new LambdaQueryWrapper<ConversationPersistenceRecord>()
+                        .eq(ConversationPersistenceRecord::getOwnerId, ownerId)
+                        .eq(ConversationPersistenceRecord::getCreationIdempotencyKey, idempotencyKey)
+                        .isNull(ConversationPersistenceRecord::getDeletedAt)),
                 "failed to find question conversation by idempotency key");
         return Optional.ofNullable(record).map(MybatisConversationRepository::toDomain);
     }
@@ -174,8 +179,13 @@ public class MybatisConversationRepository implements ConversationRepositoryPort
      */
     @Override
     public Optional<Conversation> findActive(final String ownerId, final UUID conversationId) {
+        final LambdaQueryWrapper<ConversationPersistenceRecord> query =
+                new LambdaQueryWrapper<ConversationPersistenceRecord>()
+                        .eq(ConversationPersistenceRecord::getPublicId, conversationId.toString())
+                        .eq(ConversationPersistenceRecord::getOwnerId, ownerId)
+                        .isNull(ConversationPersistenceRecord::getDeletedAt);
         return Optional.ofNullable(execute(
-                        () -> conversationMapper.selectActive(ownerId, conversationId.toString()),
+                        () -> conversationMapper.selectOne(query),
                         "failed to read conversation"))
                 .map(MybatisConversationRepository::toDomain);
     }
@@ -244,9 +254,11 @@ public class MybatisConversationRepository implements ConversationRepositoryPort
             final UUID conversationId,
             final String title,
             final Instant now) {
-        if (execute(() -> conversationMapper.rename(
-                ownerId, conversationId.toString(), title, Timestamp.from(now)),
-                "failed to rename conversation") == 0) {
+        final LambdaUpdateWrapper<ConversationPersistenceRecord> update = activeConversation(
+                ownerId, conversationId)
+                .set(ConversationPersistenceRecord::getTitle, title)
+                .set(ConversationPersistenceRecord::getUpdatedAt, Timestamp.from(now));
+        if (execute(() -> conversationMapper.update(null, update), "failed to rename conversation") == 0) {
             return Optional.empty();
         }
         return findActive(ownerId, conversationId);
@@ -266,8 +278,29 @@ public class MybatisConversationRepository implements ConversationRepositoryPort
     @Override
     public boolean softDelete(final String ownerId, final UUID conversationId, final Instant now) {
         final Timestamp deletedAt = Timestamp.from(now);
-        return execute(() -> conversationMapper.softDelete(
-                ownerId, conversationId.toString(), deletedAt), "failed to delete conversation") == 1;
+        final LambdaUpdateWrapper<ConversationPersistenceRecord> update = activeConversation(
+                ownerId, conversationId)
+                .set(ConversationPersistenceRecord::getDeletedAt, deletedAt)
+                .set(ConversationPersistenceRecord::getUpdatedAt, deletedAt);
+        return execute(() -> conversationMapper.update(null, update), "failed to delete conversation") == 1;
+    }
+
+    /**
+     * 处理当前有效会话查询条件。
+     *
+     * @param ownerId 用户所有者 ID。
+     *
+     * @param conversationId 会话 ID。
+     *
+     * @return 当前有效会话查询条件。
+     */
+    private LambdaUpdateWrapper<ConversationPersistenceRecord> activeConversation(
+            final String ownerId,
+            final UUID conversationId) {
+        return new LambdaUpdateWrapper<ConversationPersistenceRecord>()
+                .eq(ConversationPersistenceRecord::getPublicId, conversationId.toString())
+                .eq(ConversationPersistenceRecord::getOwnerId, ownerId)
+                .isNull(ConversationPersistenceRecord::getDeletedAt);
     }
 
     /**

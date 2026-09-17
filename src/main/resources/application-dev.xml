@@ -2,9 +2,10 @@
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
     <comment>开发环境配置</comment>
-    <entry key="spring.datasource.url">${TEST_DB_URL:jdbc:mysql://21.37.78.195:8891/intelligent_qa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false}</entry>
-    <entry key="spring.datasource.username">${TEST_DB_USERNAME:liea}</entry>
-    <entry key="spring.datasource.password">${TEST_DB_PASSWORD:Liea%4321}</entry>
+    <entry key="spring.datasource.url">${DEV_MYSQL_URL:${TEST_DB_URL:jdbc:mysql://127.0.0.1:3306/intelligent_qa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false}}</entry>
+    <entry key="spring.datasource.username">${DEV_MYSQL_USERNAME:${TEST_DB_USERNAME:root}}</entry>
+    <entry key="spring.datasource.password">${DEV_MYSQL_PASSWORD:${TEST_DB_PASSWORD:123456}}</entry>
+    <entry key="spring.flyway.enabled">${DEV_FLYWAY_ENABLED:false}</entry>
     <entry key="spring.redis.host">${DEV_REDIS_HOST:sh21bwm01-liea-redis-rel-89619-0-0.redis.dcs.spdbcloud.com}</entry>
     <entry key="spring.redis.port">${DEV_REDIS_PORT:5398}</entry>
     <entry key="spring.redis.password">${DEV_REDIS_PASSWORD:Liea@0501}</entry>

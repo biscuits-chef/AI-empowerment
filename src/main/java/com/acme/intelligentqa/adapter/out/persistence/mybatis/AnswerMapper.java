@@ -1,20 +1,12 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
-import java.sql.Timestamp;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** 回答表的原生 MyBatis 映射器。 */
+/** 回答表的 MyBatis-Plus 映射器。 */
 @Mapper
-public interface AnswerMapper {
-
-    /**
-     * 新增回答并回填数据库自增主键。
-     *
-     * @param record 待新增的回答记录。
-     * @return 受影响行数。
-     */
-    int insert(AnswerPersistenceRecord record);
+public interface AnswerMapper extends BaseMapper<AnswerPersistenceRecord> {
 
     /**
      * 按用户与幂等键读取已受理记录。
@@ -53,50 +45,5 @@ public interface AnswerMapper {
      */
     String selectQuestion(@Param("ownerId") String ownerId, @Param("id") String id);
 
-    /**
-     * 按允许的活动源状态迁移回答状态。
-     *
-     * @param id 回答公开标识。
-     * @param status 目标状态。
-     * @return 受影响行数。
-     */
-    int transitionStatus(@Param("id") String id, @Param("status") String status);
-
-    /**
-     * 幂等保存公司 HiAgent 应用会话 ID。
-     *
-     * @param id 回答公开标识。
-     * @param appConversationId 公司 HiAgent 应用会话 ID。
-     * @return 受影响行数。
-     */
-    int recordAppConversationId(
-            @Param("id") String id,
-            @Param("appConversationId") String appConversationId);
-
-    /**
-     * 在生成状态下保存部分回答正文。
-     *
-     * @param id 回答公开标识。
-     * @param content 部分回答正文。
-     * @return 受影响行数。
-     */
-    int savePartial(@Param("id") String id, @Param("content") String content);
-
-    /**
-     * 按活动源状态收敛回答终态。
-     *
-     * @param id 回答公开标识。
-     * @param status 目标终态。
-     * @param content 最终或部分回答正文。
-     * @param errorCode 稳定错误码，正常完成时为空。
-     * @param completedAt 完成时间。
-     * @return 受影响行数。
-     */
-    int finalizeAnswer(
-            @Param("id") String id,
-            @Param("status") String status,
-            @Param("content") String content,
-            @Param("errorCode") String errorCode,
-            @Param("completedAt") Timestamp completedAt);
-
 }
+

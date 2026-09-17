@@ -1,42 +1,60 @@
 package com.acme.intelligentqa.adapter.out.persistence.mybatis;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import java.sql.Timestamp;
 import java.time.Instant;
 
 /**
  * 与 {@code qa_file} 表对应的临时文件持久化记录。
  */
+@TableName("qa_file")
 public class TemporaryFilePersistenceRecord {
 
     /** 数据库内部自增主键。 */
+    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
     /** 对外稳定文件 UUID 标识。 */
+    @TableField("public_id")
     private String publicId;
     /** 所属会话 ID。 */
+    @TableField("conversation_id")
     private String conversationId;
     /** 用户所有者 ID。 */
+    @TableField("owner_id")
     private String ownerId;
     /** 上传幂等键。 */
+    @TableField("idempotency_key")
     private String idempotencyKey;
     /** 安全展示文件名。 */
+    @TableField("original_name")
     private String originalName;
     /** 规范内容类型。 */
+    @TableField("content_type")
     private String contentType;
     /** 文件字节数。 */
+    @TableField("size_bytes")
     private Long sizeBytes;
     /** 文件内容摘要。 */
     private String sha256;
     /** 服务端对象键。 */
+    @TableField("object_key")
     private String objectKey;
     /** 文件使用角色。 */
+    @TableField("usage_type")
     private String usageType;
     /** 文件处理状态。 */
     private String status;
     /** 创建时间。 */
+    @TableField("created_at")
     private Timestamp createdAt;
     /** 更新时间。 */
+    @TableField("updated_at")
     private Timestamp updatedAt;
     /** 逻辑删除时间。 */
+    @TableField("deleted_at")
     private Timestamp deletedAt;
 
     /** @return 数据库内部自增主键。 */

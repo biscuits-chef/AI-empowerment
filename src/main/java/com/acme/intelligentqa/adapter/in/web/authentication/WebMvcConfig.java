@@ -2,6 +2,7 @@ package com.acme.intelligentqa.adapter.in.web.authentication;
 
 import com.acme.intelligentqa.config.UiasProperties;
 import com.spdb.speedstudio.uias.authentication.filter.SAMLAuthTomcatFilter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +14,7 @@ import java.util.EnumSet;
  * Web MVC配置，包含UIAS认证过滤器配置。
  */
 @Configuration
+@ConditionalOnClass(name = "org.opensaml.xml.validation.ValidationException")
 public class WebMvcConfig {
 
     /**

@@ -20,6 +20,9 @@ import java.util.stream.Collectors;
  */
 public final class VectorStoreClient {
 
+    /**
+     * 日志记录器。
+     */
     private static final Logger log = LoggerFactory.getLogger(VectorStoreClient.class);
 
     /**
@@ -46,12 +49,12 @@ public final class VectorStoreClient {
      */
     public List<KnowledgeChunk> search(final String ownerId, final String question, final int limit) {
         try (TRSConnection conn = createConnection()) {
-            SearchParams params = createSearchParams();
-            List<Float> vectors = convertQuestionToVectors(question);
-            TRSResultSet res = executeQuery(conn, params, vectors, Math.min(limit, ragProperties.queryLimit()));
-
-            return processResultSet(res);
-        } catch (final TRSException e) {
+            final SearchParams params = createSearchParams();
+            final List<Float> vectors = convertQuestionToVectors(question);
+            try (TRSResultSet res = executeQuery(conn, params, vectors, Math.min(limit, ragProperties.queryLimit()))) {
+                return processResultSet(res);
+            }
+        } catch (final TRSException | UnsupportedOperationException | IllegalArgumentException e) {
             handleException(e);
             return new ArrayList<>();
         }
@@ -77,7 +80,7 @@ public final class VectorStoreClient {
      * @return 查询参数对象。
      */
     private SearchParams createSearchParams() {
-        SearchParams params = new SearchParams();
+        final SearchParams params = new SearchParams();
         params.setSortMethod(ragProperties.sortMethod());
         params.setReadColumns(ragProperties.readColumns());
         params.setProperty("search.read.strong.consistency", String.valueOf(ragProperties.strongConsistency()));
@@ -92,7 +95,10 @@ public final class VectorStoreClient {
      * @return 向量列表。
      */
     private List<Float> convertQuestionToVectors(final String question) {
-        throw new UnsupportedOperationException("向量转换暂未实现，请接入向量 embedding 服务");
+        if (question == null || question.trim().isEmpty()) {
+            throw new IllegalArgumentException("question must not be blank");
+        }
+        throw new UnsupportedOperationException("向量转换暂未实现，请接入向量 embedding 服务: " + question);
     }
 
     /**
@@ -110,8 +116,8 @@ public final class VectorStoreClient {
             final SearchParams params,
             final List<Float> vectors,
             final int limit) throws TRSException {
-        String qualifiedCollection = ragProperties.database() + "." + ragProperties.collection();
-        String vectorExpression = vectors.stream()
+        final String qualifiedCollection = ragProperties.database() + "." + ragProperties.collection();
+        final String vectorExpression = vectors.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(",", "vec:", ""));
 
@@ -132,14 +138,15 @@ public final class VectorStoreClient {
      * @throws TRSException 处理结果集时抛出异常。
      */
     private List<KnowledgeChunk> processResultSet(final TRSResultSet res) throws TRSException {
-        List<KnowledgeChunk> chunks = new ArrayList<>();
+        final List<KnowledgeChunk> chunks = new ArrayList<>();
         for (int i = 0; i < res.size(); i++) {
             res.moveNext();
-            TRSRecord record = res.get();
-            String sourceId = extractSourceId(record);
-            String title = extractTitle(record);
-            String content = extractContent(record);
-            chunks.add(new KnowledgeChunk(sourceId, title, content));
+            try (TRSRecord record = res.get()) {
+                final String sourceId = extractSourceId(record);
+                final String title = extractTitle(record);
+                final String content = extractContent(record);
+                chunks.add(new KnowledgeChunk(sourceId, title, content));
+            }
         }
         return chunks;
     }
@@ -191,8 +198,13 @@ public final class VectorStoreClient {
      *
      * @param e 捕获的异常。
      */
-    private void handleException(final TRSException e) {
-        log.error("ErrorCode:" + e.getErrorCode());
-        log.error("ErrorString:" + e.getErrorString());
+    private void handleException(final Exception e) {
+        if (e instanceof TRSException) {
+            final TRSException trsException = (TRSException) e;
+            log.error("TRSException ErrorCode: {}, ErrorString: {}",
+                    trsException.getErrorCode(), trsException.getErrorString());
+        } else {
+            log.error("VectorStore search error: {}", e.getMessage(), e);
+        }
     }
 }
