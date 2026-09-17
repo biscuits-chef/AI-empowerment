@@ -63,10 +63,10 @@
 
 | 领域 | 一期选型 | 说明 |
 |---|---|---|
-| 开发语言 | Java 8 | 现有基线；后续 Agent 编排服务建议使用 JDK 17+ |
+| 开发语言 | Java 17 | 当前编译、测试、容器构建和运行基线 |
 | 应用框架 | Spring Boot 2.7.18 | 使用内嵌 Jetty，不使用 Tomcat |
 | 架构风格 | 六边形架构 | 领域、应用编排、入站适配器、出站适配器分离 |
-| 数据访问 | 原生 MyBatis 3.5.19 + MyBatis XML | 全部持久化操作使用具名 Mapper 与受控显式 SQL |
+| 数据访问 | MyBatis-Plus 3.5.5 + MyBatis XML | 单表 CRUD 使用类型安全 Wrapper；复杂查询使用受控显式 SQL |
 | 应用与业务数据库 | GoldenDB | 应用库可读写；数据中台业务库只读 |
 | 数据迁移 | Flyway | 仅管理本系统应用表，不管理数据平台语义视图 |
 | 事件与协调 | Redis Stream（目标） | 用于跨实例 SSE 事件、重放和短期协调，不作为最终事实源 |
@@ -105,7 +105,7 @@ domain
      └─ out                仓储、知识库、业务库、模型、事件端口
 application.service          用例编排、事务、幂等、状态转换
 adapter.in.web               REST、SSE、参数校验、错误转换
-adapter.out                  原生 MyBatis、HiAgent、业务查询、事件流等适配器
+adapter.out                  MyBatis-Plus、HiAgent、业务查询、事件流等适配器
 config                       XML 配置绑定和依赖装配
 ```
 
@@ -523,8 +523,8 @@ flowchart TB
 推荐顺序：
 
 1. 先确认公司 HiAgent 是否已具备图工作流、工具调用、状态持久化、人工介入和可观测性，避免双重 Agent 编排。
-2. 如果需要由本系统控制编排，在独立 JDK 17+ 服务中使用 Spring AI Alibaba Graph，并只在局部节点使用 Agent Framework。
-3. 现有 Java 8 服务继续负责认证、会话、数据权限和业务 API；新服务通过稳定契约调用知识库、业务工具和 HiAgent。
+2. 如果需要由本系统控制编排，在当前 Java 17 基线上隔离评估 Spring AI Alibaba Graph，并只在局部节点使用 Agent Framework；是否拆分独立服务必须由新的 ADR 决定。
+3. 现有 Java 17 服务继续负责认证、会话、数据权限和业务 API；任何新增编排组件都必须通过稳定端口调用知识库、业务工具和 HiAgent。
 4. 金融审核结论继续使用确定性规则和人工复核，不将高风险决策交给开放式 ReAct 循环。
 
 Spring AI Alibaba 当前官方要求 JDK 17+，其 Graph 提供条件路由、并行执行、状态管理和流式工作流能力，参见 [Spring AI Alibaba 官方项目](https://github.com/alibaba/spring-ai-alibaba) 与 [官方组件说明](https://java2ai.com/docs/versions/)。

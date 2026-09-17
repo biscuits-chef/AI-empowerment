@@ -58,12 +58,17 @@ src/main/java/com/acme/intelligentqa/
 需要 JDK 17 和 Maven 3.9+：
 
 ```bash
+export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+export PATH="${JAVA_HOME}/bin:${PATH}"
+mvn -version
 mvn -B -ntp clean verify
 ```
 
+macOS 本地同时安装 JDK 8 与 JDK 17 时，不要把带补丁号的 Homebrew 版本目录写死到项目中；`/usr/libexec/java_home -v 17` 会从与 JDK 8 相同的系统 JDK 安装体系中选择 17。仓库根目录的 `.java-version` 也固定为 `17`，供支持该文件的 IDE 和版本管理器读取。执行 `mvn -version` 时必须显示 Java 17，否则 Maven Enforcer 会失败关闭。
+
 该命令执行 Checkstyle、PMD/CPD、SpotBugs、ArchUnit、JaCoCo、Maven Enforcer、单元测试和集成测试门禁。
 
-当前基线于 2026-09-17 在 JDK 17、Maven 3.9.16 上通过完整门禁：171 个单元/架构测试和 6 个集成测试无失败、无错误、无跳过，Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文注释检查、JaCoCo 和可执行 JAR 构建全部成功。回归覆盖一期文件路由关闭、问题附件拒绝、重新生成不复制历史附件，以及双通道场景计划、开发模拟用户、Agent 路由、稳定游标、活动会话删除保护、执行恢复、产品语义查询和持久化边界。本地门禁不替代真实 GoldenDB、Redis、知识库和公司大模型环境验证。
+当前基线于 2026-09-17 在 Azul Zulu JDK 17.0.20.1、Maven 3.9.9 上通过完整门禁：172 个单元/架构测试和 6 个集成测试无失败、无错误、无跳过，Checkstyle、PMD/CPD、SpotBugs、ArchUnit、中文注释检查、JaCoCo 和可执行 JAR 构建全部成功。回归覆盖 Java 17 编译、CI 与容器运行时一致性，以及一期文件路由关闭、问题附件拒绝、重新生成不复制历史附件、双通道场景计划、开发模拟用户、Agent 路由、稳定游标、活动会话删除保护、执行恢复、产品语义查询和持久化边界。本地门禁不替代真实 GoldenDB、Redis、知识库和公司大模型环境验证。
 
 ## 本地运行
 

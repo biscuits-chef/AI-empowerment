@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM maven:3.9.9-eclipse-temurin-8 AS build
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /workspace
 COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp dependency:go-offline
@@ -7,7 +7,7 @@ COPY src ./src
 COPY config ./config
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp verify
 
-FROM eclipse-temurin:8-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 RUN addgroup -S app && adduser -S -G app -u 10001 app
 WORKDIR /app
 COPY --from=build /workspace/target/intelligent-qa-audit-service-*.jar app.jar
