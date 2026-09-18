@@ -82,6 +82,83 @@ class EnvironmentProfileConfigurationTest {
     }
 
     /**
+     * 验证开发环境配置 DataHub 专属开发变量及公共调优参数。
+     */
+    @Test
+    void developmentProfileConfiguresDevDataHubProperties() {
+        final PropertySource<?> source = load("dev");
+
+        assertEquals("${DEV_DATAHUB_ENABLED:false}",
+                source.getProperty("datahub.config.enable"));
+        assertEquals("${DEV_DATAHUB_APP_CODE:}", source.getProperty("datahub.config.app-code"));
+        assertEquals("${DEV_DATAHUB_SERVER_NAME:${spring.application.name}}",
+                source.getProperty("datahub.config.server-name"));
+        assertEquals("${DEV_DATAHUB_API_KEY:}", source.getProperty("datahub.config.api-key"));
+        assertEquals("${DEV_DATAHUB_CONF_URL:}", source.getProperty("datahub.config.conf-url"));
+        assertEquals("${DEV_DATAHUB_CONF_KEY:}", source.getProperty("datahub.config.conf-key"));
+        assertEquals("${DEV_DATAHUB_HEALTH_URL:}", source.getProperty("datahub.config.health-url"));
+        assertEquals("${DEV_DATAHUB_OBS_ENDPOINT:}", source.getProperty("datahub.config.endpoint"));
+        assertEquals("${DEV_DATAHUB_OBS_ACCESS_KEY:}", source.getProperty("datahub.config.access-key"));
+        assertEquals("${DEV_DATAHUB_OBS_SECRET_KEY:}", source.getProperty("datahub.config.secret-key"));
+        assertEquals("${DEV_DATAHUB_OBS_BUCKET_NAME:}", source.getProperty("datahub.config.bucket-name"));
+        assertEquals("${DEV_DATAHUB_OBS_OBJECT_PATH:}", source.getProperty("datahub.config.object-path"));
+        assertEquals("${DEV_DATAHUB_TEMP_DIRECTORY:/tmp/datahub-dev}",
+                source.getProperty("datahub.config.temp-directory"));
+
+        assertEquals("${DATAHUB_CONNECT_TIMEOUT_SEC:5}",
+                source.getProperty("datahub.config.connect-timeout-sec"));
+        assertEquals("${DATAHUB_READ_TIMEOUT_SEC:5}",
+                source.getProperty("datahub.config.read-timeout-sec"));
+        assertEquals("${DATAHUB_INITIAL_DELAY:10}", source.getProperty("datahub.config.initial-delay"));
+        assertEquals("${DATAHUB_PERIOD:30}", source.getProperty("datahub.config.period"));
+        assertEquals("${DATAHUB_STACK_TRACE_LIMIT:5}",
+                source.getProperty("datahub.config.stack-trace-limit"));
+        assertEquals("${DATAHUB_NOTIFY_IF_EMPTY:N}",
+                source.getProperty("datahub.config.notify-if-empty"));
+        assertEquals("${DATAHUB_OBS_UPLOAD_TASK_NUM:4}",
+                source.getProperty("datahub.config.obs-upload-conf.task-num"));
+        assertEquals("${DATAHUB_OBS_UPLOAD_PART_SIZE:50}",
+                source.getProperty("datahub.config.obs-upload-conf.part-size"));
+        assertEquals("${DATAHUB_OBS_UPLOAD_LISTENER:false}",
+                source.getProperty("datahub.config.obs-upload-conf.listener"));
+        assertEquals("${DATAHUB_OBS_UPLOAD_ENABLE_CHECKPOINT:true}",
+                source.getProperty("datahub.config.obs-upload-conf.enable-checkpoint"));
+    }
+
+    /**
+     * 验证测试环境配置 DataHub 专属测试变量。
+     */
+    @Test
+    void testProfileConfiguresTestDataHubProperties() {
+        final PropertySource<?> source = load("test");
+
+        assertEquals("${TEST_DATAHUB_ENABLED:false}",
+                source.getProperty("datahub.config.enable"));
+        assertEquals("${TEST_DATAHUB_APP_CODE:}", source.getProperty("datahub.config.app-code"));
+        assertEquals("${TEST_DATAHUB_SERVER_NAME:${spring.application.name}}",
+                source.getProperty("datahub.config.server-name"));
+        assertEquals("${TEST_DATAHUB_CONF_URL:}", source.getProperty("datahub.config.conf-url"));
+        assertEquals("${TEST_DATAHUB_TEMP_DIRECTORY:/tmp/datahub-test}",
+                source.getProperty("datahub.config.temp-directory"));
+    }
+
+    /**
+     * 验证生产环境配置 DataHub 专属生产变量且默认关闭。
+     */
+    @Test
+    void productionProfileConfiguresProdDataHubProperties() {
+        final PropertySource<?> source = load("prod");
+
+        assertEquals("${PROD_DATAHUB_ENABLED:false}", source.getProperty("datahub.config.enable"));
+        assertEquals("${PROD_DATAHUB_APP_CODE:}", source.getProperty("datahub.config.app-code"));
+        assertEquals("${PROD_DATAHUB_SERVER_NAME:${spring.application.name}}",
+                source.getProperty("datahub.config.server-name"));
+        assertEquals("${PROD_DATAHUB_CONF_URL:}", source.getProperty("datahub.config.conf-url"));
+        assertEquals("${PROD_DATAHUB_TEMP_DIRECTORY:/tmp/datahub-prod}",
+                source.getProperty("datahub.config.temp-directory"));
+    }
+
+    /**
      * 加载指定 XML 配置资源。
      *
      * @param profile 待加载的环境 Profile。

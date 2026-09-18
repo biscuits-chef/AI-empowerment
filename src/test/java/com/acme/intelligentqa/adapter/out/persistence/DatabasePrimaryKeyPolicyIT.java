@@ -9,6 +9,7 @@ import com.acme.intelligentqa.adapter.out.persistence.mybatis.AnswerPersistenceR
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ChatMessagePersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationContextPersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord;
+import com.acme.intelligentqa.adapter.out.persistence.mybatis.ProductInfoPersistenceRecord;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.TemporaryFilePersistenceRecord;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -99,6 +100,7 @@ class DatabasePrimaryKeyPolicyIT {
         assertTableId(ConversationContextPersistenceRecord.class, "id");
         assertTableId(TemporaryFilePersistenceRecord.class, "id");
         assertTableId(AnswerEventPersistenceRecord.class, "id");
+        assertTableId(ProductInfoPersistenceRecord.class, "id");
     }
 
     /**
@@ -255,7 +257,8 @@ class DatabasePrimaryKeyPolicyIT {
                 AnswerPersistenceRecord.class,
                 ConversationContextPersistenceRecord.class,
                 TemporaryFilePersistenceRecord.class,
-                AnswerEventPersistenceRecord.class);
+                AnswerEventPersistenceRecord.class,
+                ProductInfoPersistenceRecord.class);
     }
 
     /** @return 主键切换后必须继续成立的业务唯一键。 */
@@ -271,7 +274,7 @@ class DatabasePrimaryKeyPolicyIT {
         result.put("qa_conversation_context", keys(key("conversation_id")));
         result.put("qa_file", keys(key("public_id"), key("owner_id", "idempotency_key")));
         result.put("qa_question_file", keys(key("question_id", "file_id")));
-        result.put("dws_product_info_d", keys(key("prdc_cd", "dt")));
+        result.put("dws_product_info_d", keys(key("prdc_cd", "acct_dt")));
         return result;
     }
 

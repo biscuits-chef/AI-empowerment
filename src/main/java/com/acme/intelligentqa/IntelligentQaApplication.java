@@ -9,9 +9,11 @@ import com.acme.intelligentqa.config.RagProperties;
 import com.acme.intelligentqa.config.RuntimeEnvironmentProperties;
 import com.acme.intelligentqa.config.TemporaryFileProperties;
 import com.acme.intelligentqa.config.UiasProperties;
+import com.joyintech.datahub.springboot.config.DataHubAutoConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * 智能问答与智能审核服务的 Spring Boot 启动入口。
@@ -29,6 +31,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         RuntimeEnvironmentProperties.class,
         UiasProperties.class
 })
+@Import({ DataHubAutoConfig.class})
 public class IntelligentQaApplication {
 
     /**
