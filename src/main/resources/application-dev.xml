@@ -45,4 +45,17 @@
     <entry key="app.uias.filter-name">${DEV_UIAS_FILTER_NAME:UIASAuthFilter}</entry>
     <entry key="app.uias.filter-order">${DEV_UIAS_FILTER_ORDER:1}</entry>
     <entry key="app.uias.url-pattern">${DEV_UIAS_URL_PATTERN:/*}</entry>
+    <entry key="datahub.config.enable">${DEV_DATAHUB_ENABLED:false}</entry>
+    <entry key="datahub.config.app-code">${DEV_DATAHUB_APP_CODE:}</entry>
+    <entry key="datahub.config.server-name">${DEV_DATAHUB_SERVER_NAME:${spring.application.name}}</entry>
+    <entry key="datahub.config.api-key">${DEV_DATAHUB_API_KEY:}</entry>
+    <entry key="datahub.config.conf-url">${DEV_DATAHUB_CONF_URL:}</entry>
+    <entry key="datahub.config.conf-key">${DEV_DATAHUB_CONF_KEY:}</entry>
+    <entry key="datahub.config.health-url">${DEV_DATAHUB_HEALTH_URL:}</entry>
+    <entry key="datahub.config.endpoint">${DEV_DATAHUB_OBS_ENDPOINT:}</entry>
+    <entry key="datahub.config.access-key">${DEV_DATAHUB_OBS_ACCESS_KEY:}</entry>
+    <entry key="datahub.config.secret-key">${DEV_DATAHUB_OBS_SECRET_KEY:}</entry>
+    <entry key="datahub.config.bucket-name">${DEV_DATAHUB_OBS_BUCKET_NAME:}</entry>
+    <entry key="datahub.config.object-path">${DEV_DATAHUB_OBS_OBJECT_PATH:}</entry>
+    <entry key="datahub.config.temp-directory">${DEV_DATAHUB_TEMP_DIRECTORY:/tmp/datahub/file}</entry>
 </properties>

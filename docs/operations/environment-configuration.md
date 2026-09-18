@@ -51,7 +51,7 @@ java -jar target/intelligent-qa-audit-service-0.1.0-SNAPSHOT.jar
 
 开发配置默认启用明确标记的演示问答。接入开发环境真实依赖时，应设置 `DEV_QA_DEMO_MODE=false`，并补充对应的知识库、业务查询和模型配置。认证模式和问答演示模式是两个独立开关：关闭演示回答不会关闭模拟认证。
 
-开发环境默认启用一期产品查询，也可显式设置 `DEV_BUSINESS_QUERY_ENABLED=true`。当前数据库必须已经由 Flyway 创建 `dws_product_info_d`，并由数据中台同步有效快照；未完成产品数据权限联调时不得据此宣称生产可用。
+开发环境默认启用一期产品查询，也可显式设置 `DEV_BUSINESS_QUERY_ENABLED=true`。当前数据库必须已经由 Flyway 创建 `dws_product_info_d`，并由数据中台同步有效快照；未完成产品数据权限联调时不得据此宣称生产可用。联调 DataHub 数据中台时可设置 `DEV_DATAHUB_ENABLED=true`，并通过 `DEV_DATAHUB_CONF_URL`、`DEV_DATAHUB_CONF_KEY`、`DEV_DATAHUB_APP_CODE`、`DEV_DATAHUB_OBS_*` 注入开发配置。
 
 ## 测试环境
 
@@ -65,6 +65,10 @@ export TEST_COMPANY_MODEL_BASE_URL='由测试环境提供'
 export TEST_COMPANY_MODEL_ENABLED=true
 export TEST_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED=true
 export TEST_BUSINESS_QUERY_ENABLED=false
+# DataHub 数据中台测试配置（可选）
+export TEST_DATAHUB_ENABLED=false
+export TEST_DATAHUB_APP_CODE='由测试环境提供'
+export TEST_DATAHUB_CONF_URL='由测试环境提供'
 java -jar target/intelligent-qa-audit-service-0.1.0-SNAPSHOT.jar
 ```
 
@@ -87,9 +91,17 @@ PROD_REDIS_PASSWORD
 PROD_COMPANY_MODEL_BASE_URL
 PROD_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED
 PROD_BUSINESS_QUERY_ENABLED
+PROD_DATAHUB_ENABLED
+PROD_DATAHUB_APP_CODE
+PROD_DATAHUB_CONF_URL
+PROD_DATAHUB_CONF_KEY
+PROD_DATAHUB_OBS_ENDPOINT
+PROD_DATAHUB_OBS_ACCESS_KEY
+PROD_DATAHUB_OBS_SECRET_KEY
+PROD_DATAHUB_OBS_BUCKET_NAME
 ```
 
-生产环境固定启用公司模型和 Redis 配置、固定关闭演示模式，并强制使用公司统一认证。`PROD_FLYWAY_TARGET` 对本版本必须显式设为 `20`，但只能在停写、任务排空、备份和目标 GoldenDB 演练均通过的维护窗口使用；缺失该变量时拒绝启动，不能用默认值绕过迁移确认。`PROD_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED` 没有默认放行值；只有真实脱敏 SSE 样例已经固化为契约测试且通过责任人审查时才可设为 `true`。当前公司认证适配器、生产 Redis 事件适配器、知识库和受控业务查询仍属于发布阻塞项；配置文件分离和开发模拟用户不代表服务已经达到生产就绪。
+生产环境固定启用公司模型和 Redis 配置、固定关闭演示模式，并强制使用公司统一认证。`PROD_FLYWAY_TARGET` 对本版本必须显式设为 `21`，但只能在停写、任务排空、备份和目标 GoldenDB 演练均通过的维护窗口使用；缺失该变量时拒绝启动，不能用默认值绕过迁移确认。`PROD_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED` 没有默认放行值；只有真实脱敏 SSE 样例已经固化为契约测试且通过责任人审查时才可设为 `true`。当前公司认证适配器、生产 Redis 事件适配器、知识库和受控业务查询仍属于发布阻塞项；配置文件分离和开发模拟用户不代表服务已经达到生产就绪。
 
 ## 公共调优变量
 
@@ -100,7 +112,8 @@ PROD_BUSINESS_QUERY_ENABLED
 - `QA_*` 回答长度、上下文、线程池和停止任务参数；
 - `BUSINESS_QUERY_MAXIMUM_ROWS` 和 `BUSINESS_SEMANTIC_MODEL_VERSION`；
 - `COMPANY_MODEL_CONNECT_TIMEOUT_MS`、`COMPANY_MODEL_READ_TIMEOUT_MS` 和请求大小上限；
-- `REDIS_TIMEOUT`、`REDIS_CONNECT_TIMEOUT`。
+- `REDIS_TIMEOUT`、`REDIS_CONNECT_TIMEOUT`；
+- `DATAHUB_*` 数据中台订阅客户端配置（`DATAHUB_APP_CODE`、`DATAHUB_SERVER_NAME`、`DATAHUB_API_KEY`、`DATAHUB_CONF_URL`、`DATAHUB_CONF_KEY`、超时、心跳与 OBS 对象存储接入等）。
 
 不得依赖开发默认值推导测试或生产容量。生产参数必须基于 10 QPS 问答提交量、真实回答时长、SSE 并发数和依赖配额压测确定。
 

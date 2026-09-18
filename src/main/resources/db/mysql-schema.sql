@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS qa_question_file (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS dws_product_info_d (
+    id BIGINT NOT NULL AUTO_INCREMENT,
     PRDC_CD VARCHAR(80) NOT NULL COMMENT '产品代码',
     FML_PRDC_CD VARCHAR(60) NULL COMMENT '母产品代码',
     FML_PRDC_IDNT VARCHAR(255) NULL COMMENT '母产品标识',
@@ -163,16 +164,17 @@ CREATE TABLE IF NOT EXISTS dws_product_info_d (
     INVS_MNGR_NM VARCHAR(30) NULL COMMENT '投资经理姓名，监管口径',
     PRDC_INVS_MNGR VARCHAR(50) NULL COMMENT '投资经理名称，产品部口径',
     PRDC_MNGR_NM VARCHAR(255) NULL COMMENT '产品经理名称，最近一次处理人',
-    PROD_MAT_DT VARCHAR(10) NULL COMMENT '产品到期日期，格式 yyyy-MM-dd',
-    PERI_OPEN_BASE_DT VARCHAR(10) NULL COMMENT '定开基准日期，格式 yyyy-MM-dd',
-    DT VARCHAR(10) NOT NULL COMMENT '每日全量快照分区日期，格式 yyyy-MM-dd',
-    PRIMARY KEY (PRDC_CD, DT),
-    KEY idx_dws_product_info_dt_code (DT, PRDC_CD),
-    KEY idx_dws_product_info_dt_name (DT, PRDC_NM, PRDC_CD),
-    KEY idx_dws_product_info_dt_abbr (DT, PRDC_ABBR, PRDC_CD),
-    KEY idx_dws_product_info_dt_full_name (DT, PRDC_FLL_NM, PRDC_CD),
-    KEY idx_dws_product_info_dt_open_date (DT, PERI_OPEN_BASE_DT, PRDC_CD),
-    KEY idx_dws_product_info_dt_mat_date (DT, PROD_MAT_DT, PRDC_CD)
+    EXPR_DT VARCHAR(10) NULL COMMENT '产品到期日期，格式 yyyy-MM-dd',
+    END_PRD_EXPR_DT VARCHAR(10) NULL COMMENT '定开基准日期，格式 yyyy-MM-dd',
+    ACCT_DT VARCHAR(10) NOT NULL COMMENT '每日全量快照分区日期，格式 yyyy-MM-dd',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_dws_product_info_code_snapshot (PRDC_CD, ACCT_DT),
+    KEY idx_dws_product_info_dt_code (ACCT_DT, PRDC_CD),
+    KEY idx_dws_product_info_dt_name (ACCT_DT, PRDC_NM, PRDC_CD),
+    KEY idx_dws_product_info_dt_abbr (ACCT_DT, PRDC_ABBR, PRDC_CD),
+    KEY idx_dws_product_info_dt_full_name (ACCT_DT, PRDC_FLL_NM, PRDC_CD),
+    KEY idx_dws_product_info_dt_open_date (ACCT_DT, END_PRD_EXPR_DT, PRDC_CD),
+    KEY idx_dws_product_info_dt_mat_date (ACCT_DT, EXPR_DT, PRDC_CD)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS test_business_trade (
@@ -188,7 +190,7 @@ CREATE TABLE IF NOT EXISTS test_business_trade (
 CREATE OR REPLACE VIEW biz_semantic_trade_v AS SELECT * FROM test_business_trade;
 
 -- 插入产品快照基线数据
-INSERT IGNORE INTO dws_product_info_d (PRDC_CD, PRDC_NM, PRDC_ABBR, PRDC_FLL_NM, PRDC_MNGR_NM, INVS_MNGR_NM, PRDC_INVS_MNGR, PRDC_FRM, PROD_MAT_DT, PERI_OPEN_BASE_DT, DT) VALUES
+INSERT IGNORE INTO dws_product_info_d (PRDC_CD, PRDC_NM, PRDC_ABBR, PRDC_FLL_NM, PRDC_MNGR_NM, INVS_MNGR_NM, PRDC_INVS_MNGR, PRDC_FRM, EXPR_DT, END_PRD_EXPR_DT, ACCT_DT) VALUES
 ('P001', '悦享3号', '悦享三号', '悦享3号固定收益类理财产品', '旧产品经理', '旧监管投资经理', '旧产品部投资经理', '封闭式', '2026-12-31', NULL, '2026-09-01'),
 ('P001', '悦享3号', '悦享三号', '悦享3号固定收益类理财产品', '产品经理甲', '监管投资经理甲', '产品部投资经理甲', '封闭式', '2026-12-31', NULL, '2026-09-07'),
 ('P002', '悦享6号', '悦享六号', '悦享6号定期开放理财产品', '产品经理乙', '监管投资经理乙', '产品部投资经理乙', '定期开放式', '2027-06-30', '2026-09-08', '2026-09-07'),

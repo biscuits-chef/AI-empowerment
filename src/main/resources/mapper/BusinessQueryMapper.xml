@@ -4,9 +4,9 @@
 <mapper namespace="com.acme.intelligentqa.adapter.out.business.BusinessQueryMapper">
     <!-- 产品查询只允许访问数据中台同步的产品快照表，所有用户值均通过预编译参数绑定。 -->
     <select id="selectLatestPartitionDate" resultType="string">
-        SELECT MAX(DT)
+        SELECT MAX(ACCT_DT)
           FROM dws_product_info_d
-         WHERE DT &lt;= #{businessDate}
+         WHERE ACCT_DT &lt;= #{businessDate}
     </select>
 
     <!-- 候选检索保留多条结果供上游消歧，禁止在数据层静默选择第一条记录。 -->
@@ -15,9 +15,9 @@
                PRDC_NM AS productName,
                PRDC_ABBR AS productAbbr,
                PRDC_FLL_NM AS productFullName,
-               DT AS snapshotDate
+               ACCT_DT AS snapshotDate
          FROM dws_product_info_d
-         WHERE DT = #{partitionDate}
+         WHERE ACCT_DT = #{partitionDate}
            AND #{entityReference} &lt;&gt; ''
            AND (PRDC_CD = #{entityReference}
                 OR PRDC_NM = #{entityReference}
@@ -47,12 +47,12 @@
                INVS_MNGR_NM AS regulatoryInvestmentManager,
                PRDC_INVS_MNGR AS departmentInvestmentManager,
                PRDC_FRM AS productForm,
-               PROD_MAT_DT AS endDate,
-               PROD_MAT_DT AS productMaturityDate,
-               PERI_OPEN_BASE_DT AS periodicOpenBaseDate,
-               DT AS snapshotDate
+               EXPR_DT AS endDate,
+               EXPR_DT AS productMaturityDate,
+               END_PRD_EXPR_DT AS periodicOpenBaseDate,
+               ACCT_DT AS snapshotDate
          FROM dws_product_info_d
-         WHERE DT = #{partitionDate}
+         WHERE ACCT_DT = #{partitionDate}
            AND #{entityReference} &lt;&gt; ''
            AND (PRDC_CD = #{entityReference}
                 OR PRDC_NM = #{entityReference}
@@ -66,17 +66,17 @@
     <select id="selectReferenceDateProducts" resultType="map">
         SELECT PRDC_CD AS productCode,
                PRDC_NM AS productName,
-               PROD_MAT_DT AS productMaturityDate,
-               PERI_OPEN_BASE_DT AS periodicOpenBaseDate,
-               DT AS snapshotDate,
-               CASE WHEN PERI_OPEN_BASE_DT = #{businessDate} THEN 1 ELSE 0 END
+               EXPR_DT AS productMaturityDate,
+               END_PRD_EXPR_DT AS periodicOpenBaseDate,
+               ACCT_DT AS snapshotDate,
+               CASE WHEN END_PRD_EXPR_DT = #{businessDate} THEN 1 ELSE 0 END
                    AS periodicOpenBaseDateMatched,
-               CASE WHEN PROD_MAT_DT = #{businessDate} THEN 1 ELSE 0 END
+               CASE WHEN EXPR_DT = #{businessDate} THEN 1 ELSE 0 END
                    AS productMaturityDateMatched
           FROM dws_product_info_d
-         WHERE DT = #{partitionDate}
-           AND (PERI_OPEN_BASE_DT = #{businessDate}
-                OR PROD_MAT_DT = #{businessDate})
+         WHERE ACCT_DT = #{partitionDate}
+           AND (END_PRD_EXPR_DT = #{businessDate}
+                OR EXPR_DT = #{businessDate})
          ORDER BY PRDC_CD ASC
          LIMIT #{limit}
     </select>

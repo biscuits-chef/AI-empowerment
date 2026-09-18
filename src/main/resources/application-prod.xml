@@ -36,4 +36,17 @@
     <entry key="app.rag.vector-candidates">${APP_RAG_VECTOR_CANDIDATES:100}</entry>
     <entry key="app.rag.query-offset">${APP_RAG_QUERY_OFFSET:0}</entry>
     <entry key="app.rag.query-limit">${APP_RAG_QUERY_LIMIT:100}</entry>
+    <entry key="datahub.config.enable">${PROD_DATAHUB_ENABLED:false}</entry>
+    <entry key="datahub.config.app-code">${PROD_DATAHUB_APP_CODE:}</entry>
+    <entry key="datahub.config.server-name">${PROD_DATAHUB_SERVER_NAME:${spring.application.name}}</entry>
+    <entry key="datahub.config.api-key">${PROD_DATAHUB_API_KEY:}</entry>
+    <entry key="datahub.config.conf-url">${PROD_DATAHUB_CONF_URL:}</entry>
+    <entry key="datahub.config.conf-key">${PROD_DATAHUB_CONF_KEY:}</entry>
+    <entry key="datahub.config.health-url">${PROD_DATAHUB_HEALTH_URL:}</entry>
+    <entry key="datahub.config.endpoint">${PROD_DATAHUB_OBS_ENDPOINT:}</entry>
+    <entry key="datahub.config.access-key">${PROD_DATAHUB_OBS_ACCESS_KEY:}</entry>
+    <entry key="datahub.config.secret-key">${PROD_DATAHUB_OBS_SECRET_KEY:}</entry>
+    <entry key="datahub.config.bucket-name">${PROD_DATAHUB_OBS_BUCKET_NAME:}</entry>
+    <entry key="datahub.config.object-path">${PROD_DATAHUB_OBS_OBJECT_PATH:}</entry>
+    <entry key="datahub.config.temp-directory">${PROD_DATAHUB_TEMP_DIRECTORY:/tmp/datahub/file}</entry>
 </properties>

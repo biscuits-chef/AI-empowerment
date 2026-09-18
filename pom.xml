@@ -21,7 +21,8 @@
         <java.version>17</java.version>
         <archunit.version>1.0.1</archunit.version>
         <javaparser.version>3.25.5</javaparser.version>
-        <obs-sdk.version>3.23.9</obs-sdk.version>
+        <obs-sdk.version>3.24.9</obs-sdk.version>
+        <datahub.version>0.1.9</datahub.version>
         <mysql-connector.version>8.0.33</mysql-connector.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <uias.version>1.0.7-RELEASE</uias.version>
@@ -99,11 +100,6 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.huaweicloud</groupId>
-            <artifactId>esdk-obs-java-bundle</artifactId>
-            <version>${obs-sdk.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
@@ -138,12 +134,6 @@
             <version>${javaparser.version}</version>
             <scope>test</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.mybatis.spring.boot</groupId>-->
-<!--            <artifactId>mybatis-spring-boot-starter-test</artifactId>-->
-<!--            <version>${mybatis-spring-boot.version}</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -162,6 +152,11 @@
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
             <version>2.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
 
         <dependency>
@@ -429,6 +424,36 @@
                     <scope>system</scope>
                     <systemPath>${project.basedir}/libs/esf/esf-sdk/3.2-RELEASE/esf-sdk-3.2-RELEASE.jar</systemPath>
                 </dependency>
+                <!-- 华为云 OBS SDK (本地 JAR) -->
+                <dependency>
+                    <groupId>com.huaweicloud</groupId>
+                    <artifactId>esdk-obs-java-bundle</artifactId>
+                    <version>${obs-sdk.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/huaweicloud/esdk-obs-java-bundle/${obs-sdk.version}/esdk-obs-java-bundle-${obs-sdk.version}.jar</systemPath>
+                </dependency>
+                <!-- 欣兆阳 Joyintech DataHub SDK (本地 JAR) -->
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-springboot-starter</artifactId>
+                    <version>${datahub.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/joyintech/datahub/datahub-client-springboot-starter/${datahub.version}/datahub-client-springboot-starter-${datahub.version}.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-spring</artifactId>
+                    <version>${datahub.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/joyintech/datahub/datahub-client-spring/${datahub.version}/datahub-client-spring-${datahub.version}.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-core</artifactId>
+                    <version>${datahub.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/libs/joyintech/datahub/datahub-client-core/${datahub.version}/datahub-client-core-${datahub.version}.jar</systemPath>
+                </dependency>
             </dependencies>
         </profile>
 
@@ -488,6 +513,28 @@
                     <groupId>com.spdb.esf</groupId>
                     <artifactId>esf-sdk</artifactId>
                     <version>${esf.version}</version>
+                </dependency>
+                <!-- 华为云 OBS SDK (远程 Maven 仓库) -->
+                <dependency>
+                    <groupId>com.huaweicloud</groupId>
+                    <artifactId>esdk-obs-java-bundle</artifactId>
+                    <version>${obs-sdk.version}</version>
+                </dependency>
+                <!-- 欣兆阳 Joyintech DataHub SDK (远程 Maven 仓库) -->
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-springboot-starter</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-spring</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-core</artifactId>
+                    <version>${datahub.version}</version>
                 </dependency>
             </dependencies>
         </profile>
@@ -549,6 +596,28 @@
                     <artifactId>esf-sdk</artifactId>
                     <version>${esf.version}</version>
                 </dependency>
+                <!-- 华为云 OBS SDK (远程 Maven 仓库) -->
+                <dependency>
+                    <groupId>com.huaweicloud</groupId>
+                    <artifactId>esdk-obs-java-bundle</artifactId>
+                    <version>${obs-sdk.version}</version>
+                </dependency>
+                <!-- 欣兆阳 Joyintech DataHub SDK (远程 Maven 仓库) -->
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-springboot-starter</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-spring</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-core</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
             </dependencies>
         </profile>
 
@@ -602,6 +671,28 @@
                     <groupId>com.spdb.esf</groupId>
                     <artifactId>esf-sdk</artifactId>
                     <version>${esf.version}</version>
+                </dependency>
+                <!-- 华为云 OBS SDK (远程 Maven 仓库) -->
+                <dependency>
+                    <groupId>com.huaweicloud</groupId>
+                    <artifactId>esdk-obs-java-bundle</artifactId>
+                    <version>${obs-sdk.version}</version>
+                </dependency>
+                <!-- 欣兆阳 Joyintech DataHub SDK (远程 Maven 仓库) -->
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-springboot-starter</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-spring</artifactId>
+                    <version>${datahub.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.joyintech.datahub</groupId>
+                    <artifactId>datahub-client-core</artifactId>
+                    <version>${datahub.version}</version>
                 </dependency>
             </dependencies>
         </profile>
