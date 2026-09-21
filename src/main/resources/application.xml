@@ -60,4 +60,14 @@
     <entry key="app.file.maximum-bytes">${QA_FILE_MAXIMUM_BYTES:1048576}</entry>
     <entry key="app.file.maximum-files-per-conversation">${QA_FILE_MAXIMUM_COUNT:5}</entry>
     <entry key="app.file.local-root">${QA_FILE_LOCAL_ROOT:/tmp/intelligent-qa-files}</entry>
+    <entry key="datahub.config.connect-timeout-sec">${DATAHUB_CONNECT_TIMEOUT_SEC:5}</entry>
+    <entry key="datahub.config.read-timeout-sec">${DATAHUB_READ_TIMEOUT_SEC:5}</entry>
+    <entry key="datahub.config.initial-delay">${DATAHUB_INITIAL_DELAY:10}</entry>
+    <entry key="datahub.config.period">${DATAHUB_PERIOD:30}</entry>
+    <entry key="datahub.config.stack-trace-limit">${DATAHUB_STACK_TRACE_LIMIT:5}</entry>
+    <entry key="datahub.config.notify-if-empty">${DATAHUB_NOTIFY_IF_EMPTY:N}</entry>
+    <entry key="datahub.config.obs-upload-conf.task-num">${DATAHUB_OBS_UPLOAD_TASK_NUM:4}</entry>
+    <entry key="datahub.config.obs-upload-conf.part-size">${DATAHUB_OBS_UPLOAD_PART_SIZE:50}</entry>
+    <entry key="datahub.config.obs-upload-conf.listener">${DATAHUB_OBS_UPLOAD_LISTENER:false}</entry>
+    <entry key="datahub.config.obs-upload-conf.enable-checkpoint">${DATAHUB_OBS_UPLOAD_ENABLE_CHECKPOINT:true}</entry>
 </properties>

@@ -11,6 +11,7 @@ import com.acme.intelligentqa.domain.model.AnswerSnapshot;
 import com.acme.intelligentqa.domain.port.in.QuestionAnswerUseCase;
 import com.acme.intelligentqa.domain.port.out.AnswerRepositoryPort;
 import com.acme.intelligentqa.adapter.out.persistence.mybatis.ConversationPersistenceRecord;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Timestamp;
@@ -224,6 +225,32 @@ public class MybatisAnswerRepository implements AnswerRepositoryPort {
         return execute(
                 () -> answerMapper.update(null, update),
                 "failed to record HiAgent app conversation id") == 1;
+    }
+
+    /**
+     * 查询指定会话最近一次记录的公司 HiAgent 应用会话 ID。
+     *
+     * @param conversationId 会话 ID。
+     *
+     * @return 匹配的应用会话 ID，不存在时返回空 Optional。
+     */
+    @Override
+    public Optional<String> findLatestAppConversationId(final UUID conversationId) {
+        if (conversationId == null) {
+            return Optional.empty();
+        }
+        final LambdaQueryWrapper<AnswerPersistenceRecord> query =
+                new LambdaQueryWrapper<AnswerPersistenceRecord>()
+                        .select(AnswerPersistenceRecord::getAppConversationId)
+                        .eq(AnswerPersistenceRecord::getConversationId, conversationId.toString())
+                        .isNotNull(AnswerPersistenceRecord::getAppConversationId)
+                        .ne(AnswerPersistenceRecord::getAppConversationId, "")
+                        .orderByDesc(AnswerPersistenceRecord::getId)
+                        .last("LIMIT 1");
+        final AnswerPersistenceRecord record = execute(
+                () -> answerMapper.selectOne(query),
+                "failed to query latest app conversation id");
+        return Optional.ofNullable(record).map(AnswerPersistenceRecord::getAppConversationId);
     }
 
     /**

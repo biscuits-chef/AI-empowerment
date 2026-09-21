@@ -124,6 +124,10 @@ public interface LanguageModelPort {
          */
         private final UUID conversationId;
         /**
+         * 公司 HiAgent 应用会话 ID，可为空。
+         */
+        private final String appConversationId;
+        /**
          * 查询意图。
          */
         private final QueryIntent intent;
@@ -152,21 +156,51 @@ public interface LanguageModelPort {
          * 创建 {@code GenerationRequest} 实例。
          *
          * @param ownerId 用户所有者 ID。
-         *
          * @param conversationId 会话 ID。
-         *
+         * @param appConversationId 公司 HiAgent 应用会话 ID，可为空。
          * @param question 用户问题。
-         *
          * @param intent 查询意图。
-         *
          * @param entitySourceMessageIds 已确认实体对应的来源用户消息 ID。
-         *
          * @param evidenceAssessment 双通道证据对账结果。
-         *
          * @param history 最近对话历史。
-         *
          * @param knowledge 知识库片段列表。
+         * @param businessFacts 业务事实列表。
+         */
+        public GenerationRequest(
+                final String ownerId,
+                final UUID conversationId,
+                final String appConversationId,
+                final String question,
+                final QueryIntent intent,
+                final Map<String, UUID> entitySourceMessageIds,
+                final EvidenceAssessment evidenceAssessment,
+                final List<ChatMessage> history,
+                final List<KnowledgeChunk> knowledge,
+                final List<BusinessFact> businessFacts) {
+            this.ownerId = requireText(ownerId, "ownerId");
+            this.conversationId = Objects.requireNonNull(conversationId, "conversationId must not be null");
+            this.appConversationId = trimToNull(appConversationId);
+            this.question = requireText(question, "question");
+            this.intent = Objects.requireNonNull(intent, "intent must not be null");
+            this.entitySourceMessageIds = immutableMap(entitySourceMessageIds, intent);
+            this.evidenceAssessment = Objects.requireNonNull(
+                    evidenceAssessment, "evidenceAssessment must not be null");
+            this.history = immutableCopy(history);
+            this.knowledge = immutableCopy(knowledge);
+            this.businessFacts = immutableCopy(businessFacts);
+        }
+
+        /**
+         * 创建 {@code GenerationRequest} 实例。
          *
+         * @param ownerId 用户所有者 ID。
+         * @param conversationId 会话 ID。
+         * @param question 用户问题。
+         * @param intent 查询意图。
+         * @param entitySourceMessageIds 已确认实体对应的来源用户消息 ID。
+         * @param evidenceAssessment 双通道证据对账结果。
+         * @param history 最近对话历史。
+         * @param knowledge 知识库片段列表。
          * @param businessFacts 业务事实列表。
          */
         public GenerationRequest(
@@ -179,16 +213,8 @@ public interface LanguageModelPort {
                 final List<ChatMessage> history,
                 final List<KnowledgeChunk> knowledge,
                 final List<BusinessFact> businessFacts) {
-            this.ownerId = requireText(ownerId, "ownerId");
-            this.conversationId = Objects.requireNonNull(conversationId, "conversationId must not be null");
-            this.question = requireText(question, "question");
-            this.intent = Objects.requireNonNull(intent, "intent must not be null");
-            this.entitySourceMessageIds = immutableMap(entitySourceMessageIds, intent);
-            this.evidenceAssessment = Objects.requireNonNull(
-                    evidenceAssessment, "evidenceAssessment must not be null");
-            this.history = immutableCopy(history);
-            this.knowledge = immutableCopy(knowledge);
-            this.businessFacts = immutableCopy(businessFacts);
+            this(ownerId, conversationId, null, question, intent, entitySourceMessageIds,
+                    evidenceAssessment, history, knowledge, businessFacts);
         }
 
         /**
@@ -209,6 +235,12 @@ public interface LanguageModelPort {
          * @return 会话 ID。
          */
         public UUID conversationId() { return conversationId; }
+        /**
+         * 返回公司 HiAgent 应用会话 ID。
+         *
+         * @return 公司 HiAgent 应用会话 ID，未指定时返回 null。
+         */
+        public String appConversationId() { return appConversationId; }
         /**
          * 返回查询意图。
          *
@@ -306,6 +338,20 @@ public interface LanguageModelPort {
                 throw new IllegalArgumentException(field + " must not be blank");
             }
             return value;
+        }
+
+        /**
+         * 规范化可选文本并在为空时返回 null。
+         *
+         * @param value 待规范化文本。
+         *
+         * @return 规范化文本，为空或全空白字符时返回 null。
+         */
+        private static String trimToNull(final String value) {
+            if (value == null || value.trim().isEmpty()) {
+                return null;
+            }
+            return value.trim();
         }
     }
 

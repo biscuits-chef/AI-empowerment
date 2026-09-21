@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.acme.intelligentqa.adapter.out.persistence.mybatis.ProductInfoMapper">
+
+    <resultMap id="ProductInfoResultMap" type="com.acme.intelligentqa.adapter.out.persistence.mybatis.ProductInfoPersistenceRecord">
+        <id property="id" column="id" />
+        <result property="prdcCd" column="PRDC_CD" />
+        <result property="fmlPrdcCd" column="FML_PRDC_CD" />
+        <result property="fmlPrdcIdnt" column="FML_PRDC_IDNT" />
+        <result property="fthrPrdcNm" column="FTHR_PRDC_NM" />
+        <result property="prdcNm" column="PRDC_NM" />
+        <result property="prdcAbbr" column="PRDC_ABBR" />
+        <result property="prdcFllNm" column="PRDC_FLL_NM" />
+        <result property="catenaCd" column="CATENA_CD" />
+        <result property="catenaNm" column="CATENA_NM" />
+        <result property="opnTyp" column="OPN_TYP" />
+        <result property="prdcTyp" column="PRDC_TYP" />
+        <result property="prdtTp" column="PRDT_TP" />
+        <result property="prdcFrm" column="PRDC_FRM" />
+        <result property="issMthd" column="ISS_MTHD" />
+        <result property="rsMthd" column="RS_MTHD" />
+        <result property="rsCrrn" column="RS_CRRN" />
+        <result property="trmTyp" column="TRM_TYP" />
+        <result property="prdcClss" column="PRDC_CLSS" />
+        <result property="grpUntNm" column="GRP_UNT_NM" />
+        <result property="prdcAsstTyp" column="PRDC_ASST_TYP" />
+        <result property="prdcMrktTyp" column="PRDC_MRKT_TYP" />
+        <result property="pftaFiprIdnt" column="PFTA_FIPR_IDNT" />
+        <result property="accnNm" column="ACCN_NM" />
+        <result property="suborgNm" column="SUBORG_NM" />
+        <result property="dvlpTyp" column="DVLP_TYP" />
+        <result property="opnClss" column="OPN_CLSS" />
+        <result property="prdcBrnd" column="PRDC_BRND" />
+        <result property="prdcPstn" column="PRDC_PSTN" />
+        <result property="prdcBrnd2" column="PRDC_BRND_2" />
+        <result property="prdcBrnd3" column="PRDC_BRND_3" />
+        <result property="riskGrade" column="RISK_GRADE" />
+        <result property="shrTyp" column="SHR_TYP" />
+        <result property="isPsnlPnsn" column="IS_PSNL_PNSN" />
+        <result property="intrMthd" column="INTR_MTHD" />
+        <result property="prdcThm" column="PRDC_THM" />
+        <result property="invsMngrNm" column="INVS_MNGR_NM" />
+        <result property="prdcInvsMngr" column="PRDC_INVS_MNGR" />
+        <result property="prdcMngrNm" column="PRDC_MNGR_NM" />
+        <result property="exprDt" column="EXPR_DT" />
+        <result property="endPrdExprDt" column="END_PRD_EXPR_DT" />
+        <result property="acctDt" column="ACCT_DT" />
+    </resultMap>
+
+    <insert id="upsertBatch">
+        INSERT INTO dws_product_info_d (
+            PRDC_CD, FML_PRDC_CD, FML_PRDC_IDNT, FTHR_PRDC_NM, PRDC_NM,
+            PRDC_ABBR, PRDC_FLL_NM, CATENA_CD, CATENA_NM, OPN_TYP,
+            PRDC_TYP, PRDT_TP, PRDC_FRM, ISS_MTHD, RS_MTHD,
+            RS_CRRN, TRM_TYP, PRDC_CLSS, GRP_UNT_NM, PRDC_ASST_TYP,
+            PRDC_MRKT_TYP, PFTA_FIPR_IDNT, ACCN_NM, SUBORG_NM, DVLP_TYP,
+            OPN_CLSS, PRDC_BRND, PRDC_PSTN, PRDC_BRND_2, PRDC_BRND_3,
+            RISK_GRADE, SHR_TYP, IS_PSNL_PNSN, INTR_MTHD, PRDC_THM,
+            INVS_MNGR_NM, PRDC_INVS_MNGR, PRDC_MNGR_NM, EXPR_DT, END_PRD_EXPR_DT,
+            ACCT_DT
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.prdcCd}, #{item.fmlPrdcCd}, #{item.fmlPrdcIdnt}, #{item.fthrPrdcNm}, #{item.prdcNm},
+                #{item.prdcAbbr}, #{item.prdcFllNm}, #{item.catenaCd}, #{item.catenaNm}, #{item.opnTyp},
+                #{item.prdcTyp}, #{item.prdtTp}, #{item.prdcFrm}, #{item.issMthd}, #{item.rsMthd},
+                #{item.rsCrrn}, #{item.trmTyp}, #{item.prdcClss}, #{item.grpUntNm}, #{item.prdcAsstTyp},
+                #{item.prdcMrktTyp}, #{item.pftaFiprIdnt}, #{item.accnNm}, #{item.suborgNm}, #{item.dvlpTyp},
+                #{item.opnClss}, #{item.prdcBrnd}, #{item.prdcPstn}, #{item.prdcBrnd2}, #{item.prdcBrnd3},
+                #{item.riskGrade}, #{item.shrTyp}, #{item.isPsnlPnsn}, #{item.intrMthd}, #{item.prdcThm},
+                #{item.invsMngrNm}, #{item.prdcInvsMngr}, #{item.prdcMngrNm}, #{item.exprDt}, #{item.endPrdExprDt},
+                #{item.acctDt}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            FML_PRDC_CD = VALUES(FML_PRDC_CD),
+            FML_PRDC_IDNT = VALUES(FML_PRDC_IDNT),
+            FTHR_PRDC_NM = VALUES(FTHR_PRDC_NM),
+            PRDC_NM = VALUES(PRDC_NM),
+            PRDC_ABBR = VALUES(PRDC_ABBR),
+            PRDC_FLL_NM = VALUES(PRDC_FLL_NM),
+            CATENA_CD = VALUES(CATENA_CD),
+            CATENA_NM = VALUES(CATENA_NM),
+            OPN_TYP = VALUES(OPN_TYP),
+            PRDC_TYP = VALUES(PRDC_TYP),
+            PRDT_TP = VALUES(PRDT_TP),
+            PRDC_FRM = VALUES(PRDC_FRM),
+            ISS_MTHD = VALUES(ISS_MTHD),
+            RS_MTHD = VALUES(RS_MTHD),
+            RS_CRRN = VALUES(RS_CRRN),
+            TRM_TYP = VALUES(TRM_TYP),
+            PRDC_CLSS = VALUES(PRDC_CLSS),
+            GRP_UNT_NM = VALUES(GRP_UNT_NM),
+            PRDC_ASST_TYP = VALUES(PRDC_ASST_TYP),
+            PRDC_MRKT_TYP = VALUES(PRDC_MRKT_TYP),
+            PFTA_FIPR_IDNT = VALUES(PFTA_FIPR_IDNT),
+            ACCN_NM = VALUES(ACCN_NM),
+            SUBORG_NM = VALUES(SUBORG_NM),
+            DVLP_TYP = VALUES(DVLP_TYP),
+            OPN_CLSS = VALUES(OPN_CLSS),
+            PRDC_BRND = VALUES(PRDC_BRND),
+            PRDC_PSTN = VALUES(PRDC_PSTN),
+            PRDC_BRND_2 = VALUES(PRDC_BRND_2),
+            PRDC_BRND_3 = VALUES(PRDC_BRND_3),
+            RISK_GRADE = VALUES(RISK_GRADE),
+            SHR_TYP = VALUES(SHR_TYP),
+            IS_PSNL_PNSN = VALUES(IS_PSNL_PNSN),
+            INTR_MTHD = VALUES(INTR_MTHD),
+            PRDC_THM = VALUES(PRDC_THM),
+            INVS_MNGR_NM = VALUES(INVS_MNGR_NM),
+            PRDC_INVS_MNGR = VALUES(PRDC_INVS_MNGR),
+            PRDC_MNGR_NM = VALUES(PRDC_MNGR_NM),
+            EXPR_DT = VALUES(EXPR_DT),
+            END_PRD_EXPR_DT = VALUES(END_PRD_EXPR_DT)
+    </insert>
+</mapper>

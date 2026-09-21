@@ -63,6 +63,7 @@ public class AnswerGenerationWorkflowNode implements WorkflowNode {
                 new LanguageModelPort.GenerationRequest(
                         context.ownerId(),
                         context.answer().conversationId(),
+                        context.appConversationId(),
                         context.resolvedQuestion(),
                         context.intent(),
                         context.entitySourceMessageIds(),

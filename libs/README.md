@@ -11,6 +11,14 @@
 ### ESF相关包
 - `esf/esf-sdk/3.2-RELEASE/esf-sdk-3.2-RELEASE.jar`
 
+### 华为云 OBS 相关包
+- `huaweicloud/esdk-obs-java-bundle/3.24.9/esdk-obs-java-bundle-3.24.9.jar`
+
+### 欣兆阳 DataHub 相关包
+- `joyintech/datahub/datahub-client-springboot-starter/0.1.9/datahub-client-springboot-starter-0.1.9.jar`
+- `joyintech/datahub/datahub-client-spring/0.1.9/datahub-client-spring-0.1.9.jar`
+- `joyintech/datahub/datahub-client-core/0.1.9/datahub-client-core-0.1.9.jar`
+
 ### 其他包
 - `trshybase-api.jar` - 海贝TRS客户端API
 
@@ -40,6 +48,13 @@ libs/
 │   ├── esf-auth-core/1.0.0-RELEASE/esf-auth-core-1.0.0-RELEASE.jar
 │   ├── esf-trafficstainer/3.2-RELEASE/esf-trafficstainer-3.2-RELEASE.jar
 │   └── esf-unitroute-core/1.0.1-RELEASE/esf-unitroute-core-1.0.1-RELEASE.jar
+├── huaweicloud/
+│   └── esdk-obs-java-bundle/3.24.9/esdk-obs-java-bundle-3.24.9.jar
+├── joyintech/
+│   └── datahub/
+│       ├── datahub-client-springboot-starter/0.1.9/datahub-client-springboot-starter-0.1.9.jar
+│       ├── datahub-client-spring/0.1.9/datahub-client-spring-0.1.9.jar
+│       └── datahub-client-core/0.1.9/datahub-client-core-0.1.9.jar
 ├── speedstudio/
 │   ├── uias-spring-boot-starter/1.0.7-RELEASE/uias-spring-boot-starter-1.0.7-RELEASE.jar
 │   └── uias-sdk/1.0.7-RELEASE/uias-sdk-1.0.7-RELEASE.jar

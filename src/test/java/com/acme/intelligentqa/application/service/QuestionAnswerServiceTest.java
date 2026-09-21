@@ -1319,6 +1319,10 @@ class QuestionAnswerServiceTest {
          */
         private final Map<UUID, QuestionAnswerUseCase.Feedback> feedback = new HashMap<>();
         /**
+         * 回答关联的公司 HiAgent 会话 ID。
+         */
+        private final Map<UUID, String> appConversationIds = new HashMap<>();
+        /**
          * 已创建的测试回答数量。
          */
         private int createdCount;
@@ -1429,7 +1433,24 @@ class QuestionAnswerServiceTest {
          */
         @Override public boolean recordAppConversationId(
                 final UUID answerId, final String appConversationId) {
+            appConversationIds.put(answerId, appConversationId);
             return true;
+        }
+
+        /**
+         * 查询指定会话最近一次记录的公司 HiAgent 应用会话 ID。
+         *
+         * @param conversationId 会话 ID。
+         *
+         * @return 匹配的应用会话 ID，不存在时返回空 Optional。
+         */
+        @Override public Optional<String> findLatestAppConversationId(final UUID conversationId) {
+            for (final AnswerSnapshot snapshot : values.values()) {
+                if (snapshot.conversationId().equals(conversationId) && appConversationIds.containsKey(snapshot.id())) {
+                    return Optional.ofNullable(appConversationIds.get(snapshot.id()));
+                }
+            }
+            return Optional.empty();
         }
         /**
          * 保存已生成的部分回答文本。

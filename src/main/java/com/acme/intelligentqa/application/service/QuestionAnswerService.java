@@ -467,6 +467,9 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
         try {
             final ConversationContext conversationContext = contextRepository.find(
                     ownerId, answer.conversationId()).orElse(null);
+            final String existingAppConversationId = answerRepository
+                    .findLatestAppConversationId(answer.conversationId())
+                    .orElse(null);
             final QuestionWorkflowContext workflowContext = new QuestionWorkflowContext(
                     ownerId,
                     answer,
@@ -476,7 +479,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
                     scenario,
                     chunk -> appendChunk(answer.id(), content, chunk),
                     new GenerationControl(answer.id()),
-                    () -> ensureNotCancelled(answer.id()));
+                    () -> ensureNotCancelled(answer.id()),
+                    existingAppConversationId);
             workflowEngine.execute(workflowContext, this::beforeNode, this::afterNode);
             if (workflowContext.clarification() != null) {
                 return;
