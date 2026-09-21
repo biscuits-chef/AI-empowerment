@@ -179,9 +179,7 @@ public interface LanguageModelPort {
                 final List<BusinessFact> businessFacts) {
             this.ownerId = requireText(ownerId, "ownerId");
             this.conversationId = Objects.requireNonNull(conversationId, "conversationId must not be null");
-            this.appConversationId = appConversationId == null || appConversationId.trim().isEmpty()
-                    ? null
-                    : appConversationId.trim();
+            this.appConversationId = trimToNull(appConversationId);
             this.question = requireText(question, "question");
             this.intent = Objects.requireNonNull(intent, "intent must not be null");
             this.entitySourceMessageIds = immutableMap(entitySourceMessageIds, intent);
@@ -340,6 +338,20 @@ public interface LanguageModelPort {
                 throw new IllegalArgumentException(field + " must not be blank");
             }
             return value;
+        }
+
+        /**
+         * 规范化可选文本并在为空时返回 null。
+         *
+         * @param value 待规范化文本。
+         *
+         * @return 规范化文本，为空或全空白字符时返回 null。
+         */
+        private static String trimToNull(final String value) {
+            if (value == null || value.trim().isEmpty()) {
+                return null;
+            }
+            return value.trim();
         }
     }
 

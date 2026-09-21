@@ -104,9 +104,7 @@ public final class QuestionWorkflowContext {
         this.generationControl = Objects.requireNonNull(
                 generationControl, "generationControl must not be null");
         this.activeCheck = Objects.requireNonNull(activeCheck, "activeCheck must not be null");
-        this.appConversationId = appConversationId == null || appConversationId.trim().isEmpty()
-                ? null
-                : appConversationId.trim();
+        this.appConversationId = trimToNull(appConversationId);
     }
 
     /**
@@ -393,11 +391,26 @@ public final class QuestionWorkflowContext {
      *
      * @param value 待校验文本。
      * @param field 字段名称。
+     *
      * @return 去除首尾空格后的文本。
      */
     private static String requireText(final String value, final String field) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(field + " must not be blank");
+        }
+        return value.trim();
+    }
+
+    /**
+     * 去除首尾空格并在为空时返回 null。
+     *
+     * @param value 待规范化文本。
+     *
+     * @return 规范化文本，为空或全空白字符时返回 null。
+     */
+    private static String trimToNull(final String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
         }
         return value.trim();
     }
