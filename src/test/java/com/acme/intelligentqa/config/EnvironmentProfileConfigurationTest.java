@@ -102,7 +102,7 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("${DEV_DATAHUB_OBS_SECRET_KEY:}", source.getProperty("datahub.config.secret-key"));
         assertEquals("${DEV_DATAHUB_OBS_BUCKET_NAME:}", source.getProperty("datahub.config.bucket-name"));
         assertEquals("${DEV_DATAHUB_OBS_OBJECT_PATH:}", source.getProperty("datahub.config.object-path"));
-        assertEquals("${DEV_DATAHUB_TEMP_DIRECTORY:/tmp/datahub-dev}",
+        assertEquals("${DEV_DATAHUB_TEMP_DIRECTORY:/tmp/datahub/file}",
                 source.getProperty("datahub.config.temp-directory"));
 
         assertEquals("${DATAHUB_CONNECT_TIMEOUT_SEC:5}",
@@ -138,7 +138,7 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("${TEST_DATAHUB_SERVER_NAME:${spring.application.name}}",
                 source.getProperty("datahub.config.server-name"));
         assertEquals("${TEST_DATAHUB_CONF_URL:}", source.getProperty("datahub.config.conf-url"));
-        assertEquals("${TEST_DATAHUB_TEMP_DIRECTORY:/tmp/datahub-test}",
+        assertEquals("${TEST_DATAHUB_TEMP_DIRECTORY:/tmp/datahub/file}",
                 source.getProperty("datahub.config.temp-directory"));
     }
 
@@ -154,7 +154,7 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("${PROD_DATAHUB_SERVER_NAME:${spring.application.name}}",
                 source.getProperty("datahub.config.server-name"));
         assertEquals("${PROD_DATAHUB_CONF_URL:}", source.getProperty("datahub.config.conf-url"));
-        assertEquals("${PROD_DATAHUB_TEMP_DIRECTORY:/tmp/datahub-prod}",
+        assertEquals("${PROD_DATAHUB_TEMP_DIRECTORY:/tmp/datahub/file}",
                 source.getProperty("datahub.config.temp-directory"));
     }
 
