@@ -267,6 +267,71 @@ class CompanyModelApiClientTest {
     }
 
     /**
+     * 验证携带已有应用会话 ID 时直接复用而不调用创建会话接口。
+     */
+    @Test
+    void reusesExistingAppConversationIdWithoutCallingCreateConversation() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("{"
+                        + "\"UserID\":\"user-1\","
+                        + "\"AppConversationID\":\"existing-conv-99\","
+                        + "\"ResponseMode\":\"streaming\","
+                        + "\"PubAgentJump\":false}", false))
+                .andRespond(withSuccess(
+                        "data: {\"Answer\":\"复用回答\"}\n\n"
+                                + "data: [DONE]\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+        final List<String> chunks = new ArrayList<>();
+        final AtomicReference<String> capturedConversationId = new AtomicReference<>();
+
+        final LanguageModelPort.GenerationResult result = client.generate(
+                request("user-1", "existing-conv-99"),
+                chunks::add,
+                new LanguageModelPort.GenerationControl() {
+                    /**
+                     * 检查是否已请求取消。
+                     *
+                     * @return 始终返回 false。
+                     */
+                    @Override
+                    public boolean isCancellationRequested() {
+                        return false;
+                    }
+
+                    /**
+                     * 持久化公司 HiAgent 应用会话 ID。
+                     *
+                     * @param appConversationId 公司 HiAgent 应用会话 ID。
+                     */
+                    @Override
+                    public void onAppConversationId(final String appConversationId) {
+                        capturedConversationId.set(appConversationId);
+                    }
+
+                    /**
+                     * 持久化消息 ID。
+                     *
+                     * @param messageId 公司模型消息 ID。
+                     */
+                    @Override
+                    public void onMessageId(final String messageId) {
+                    }
+                });
+
+        assertEquals("company-hiagent", result.modelCode());
+        assertEquals("stream_end", result.finishReason());
+        assertEquals(Collections.singletonList("复用回答"), chunks);
+        assertEquals("existing-conv-99", capturedConversationId.get());
+        server.verify();
+    }
+
+    /**
      * 携带同源凭据并在有界超时内调用 JSON 接口。
      *
      * @param ownerId 用户所有者 ID。
@@ -274,9 +339,21 @@ class CompanyModelApiClientTest {
      * @return 接口请求。
      */
     private LanguageModelPort.GenerationRequest request(final String ownerId) {
+        return request(ownerId, null);
+    }
+
+    /**
+     * 构造携带指定应用会话 ID 的模型请求。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param appConversationId 公司模型会话 ID。
+     * @return 接口请求。
+     */
+    private LanguageModelPort.GenerationRequest request(final String ownerId, final String appConversationId) {
         return new LanguageModelPort.GenerationRequest(
                 ownerId,
                 UUID.randomUUID(),
+                appConversationId,
                 "产品费率是多少",
                 new QueryIntent(
                         QueryIntent.Type.PRODUCT_TRADE_BASIC_INFO, 0.99D, Collections.emptyMap()),

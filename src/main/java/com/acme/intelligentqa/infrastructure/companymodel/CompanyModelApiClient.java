@@ -116,7 +116,12 @@ public final class CompanyModelApiClient {
         requireEnabled();
         validateUserId(request.ownerId());
         try {
-            final String appConversationId = createConversation(request.ownerId());
+            final String appConversationId;
+            if (request.appConversationId() != null && !request.appConversationId().trim().isEmpty()) {
+                appConversationId = request.appConversationId().trim();
+            } else {
+                appConversationId = createConversation(request.ownerId());
+            }
             control.onAppConversationId(appConversationId);
             final ChatQueryRequest body = new ChatQueryRequest(
                     request.ownerId(), appConversationId, promptFactory.create(request), "streaming", false);

@@ -45,6 +45,8 @@ public final class QuestionWorkflowContext {
     private final LanguageModelPort.GenerationControl generationControl;
     /** 节点之间执行停止检查的回调。 */
     private final Runnable activeCheck;
+    /** 公司 HiAgent 应用会话 ID，可为空。 */
+    private final String appConversationId;
     /** 本次执行轨迹。 */
     private final List<WorkflowNodeExecution> executions = new ArrayList<>();
     /** 当前使用的执行计划版本。 */
@@ -78,6 +80,7 @@ public final class QuestionWorkflowContext {
      * @param outputConsumer 回答文本增量消费者。
      * @param generationControl 大模型生成取消控制器。
      * @param activeCheck 节点之间的停止检查回调。
+     * @param appConversationId 公司 HiAgent 应用会话 ID，可为空。
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Injected callbacks are retained and not exposed")
     public QuestionWorkflowContext(
@@ -89,7 +92,8 @@ public final class QuestionWorkflowContext {
             final QueryScenario scenario,
             final Consumer<String> outputConsumer,
             final LanguageModelPort.GenerationControl generationControl,
-            final Runnable activeCheck) {
+            final Runnable activeCheck,
+            final String appConversationId) {
         this.ownerId = requireText(ownerId, "ownerId");
         this.answer = Objects.requireNonNull(answer, "answer must not be null");
         this.question = requireText(question, "question");
@@ -100,7 +104,44 @@ public final class QuestionWorkflowContext {
         this.generationControl = Objects.requireNonNull(
                 generationControl, "generationControl must not be null");
         this.activeCheck = Objects.requireNonNull(activeCheck, "activeCheck must not be null");
+        this.appConversationId = appConversationId == null || appConversationId.trim().isEmpty()
+                ? null
+                : appConversationId.trim();
     }
+
+    /**
+     * 创建单次问答工作流上下文。
+     *
+     * @param ownerId 用户所有者 ID。
+     * @param answer 当前回答快照。
+     * @param question 用户原始问题。
+     * @param history 最近有效对话历史。
+     * @param conversationContext 已持久化会话上下文，首次问答时允许为空。
+     * @param scenario 本次后端查询场景。
+     * @param outputConsumer 回答文本增量消费者。
+     * @param generationControl 大模型生成取消控制器。
+     * @param activeCheck 节点之间的停止检查回调。
+     */
+    public QuestionWorkflowContext(
+            final String ownerId,
+            final AnswerSnapshot answer,
+            final String question,
+            final List<ChatMessage> history,
+            final ConversationContext conversationContext,
+            final QueryScenario scenario,
+            final Consumer<String> outputConsumer,
+            final LanguageModelPort.GenerationControl generationControl,
+            final Runnable activeCheck) {
+        this(ownerId, answer, question, history, conversationContext, scenario, outputConsumer,
+                generationControl, activeCheck, null);
+    }
+
+    /**
+     * 返回公司 HiAgent 应用会话 ID。
+     *
+     * @return 公司 HiAgent 应用会话 ID，未指定时返回 null。
+     */
+    public String appConversationId() { return appConversationId; }
 
     /**
      * 绑定执行器选定的场景计划版本。

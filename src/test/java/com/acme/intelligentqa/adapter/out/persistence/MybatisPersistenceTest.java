@@ -23,8 +23,9 @@ import com.acme.intelligentqa.domain.port.in.AnswerCancellationUseCase;
 import com.acme.intelligentqa.domain.port.out.CancellationRepositoryPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -461,6 +462,8 @@ class MybatisPersistenceTest {
         assertEquals("company-conversation-1", jdbcTemplate.queryForObject(
                 "SELECT app_conversation_id FROM qa_answer WHERE public_id = ?",
                 String.class, answerId.toString()));
+        assertEquals(Optional.of("company-conversation-1"),
+                answers.findLatestAppConversationId(conversationId));
     }
 
     /**

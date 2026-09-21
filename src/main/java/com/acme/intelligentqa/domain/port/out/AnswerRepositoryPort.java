@@ -101,6 +101,17 @@ public interface AnswerRepositoryPort {
     boolean recordAppConversationId(UUID answerId, String appConversationId);
 
     /**
+     * 查询指定会话最近一次记录的公司 HiAgent 应用会话 ID。
+     *
+     * @param conversationId 会话 ID。
+     *
+     * @return 匹配的应用会话 ID，不存在时返回空 Optional。
+     */
+    default Optional<String> findLatestAppConversationId(final UUID conversationId) {
+        return Optional.empty();
+    }
+
+    /**
      * 保存已生成的部分回答文本。
      *
      * @param answerId 回答 ID。
