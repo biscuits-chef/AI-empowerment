@@ -13,6 +13,7 @@
     <entry key="management.endpoint.health.show-details">always</entry>
     <entry key="app.runtime.stage">DEVELOPMENT</entry>
     <entry key="app.runtime.profile">dev</entry>
+    <entry key="logging.file.path">${DEV_LOG_PATH:/logs/liea-dev}</entry>
     <entry key="app.auth.mode">${DEV_AUTH_MODE:mock}</entry>
     <entry key="app.auth.mock-user-id">${DEV_MOCK_USER_ID:dev-user-001}</entry>
     <entry key="app.qa.demo-mode">${DEV_QA_DEMO_MODE:true}</entry>

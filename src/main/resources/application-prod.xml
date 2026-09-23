@@ -13,6 +13,7 @@
     <entry key="management.endpoint.health.show-details">never</entry>
     <entry key="app.runtime.stage">PRODUCTION</entry>
     <entry key="app.runtime.profile">prod</entry>
+    <entry key="logging.file.path">${PROD_LOG_PATH:/logs/liea-prod}</entry>
     <entry key="app.auth.mode">corporate</entry>
     <entry key="app.auth.mock-user-id"></entry>
     <entry key="app.qa.demo-mode">false</entry>
