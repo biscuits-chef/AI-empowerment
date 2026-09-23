@@ -3,7 +3,7 @@
     <springProperty scope="context" name="app.name" source="spring.application.name"/>
     <springProperty scope="context" name="app.runtime.stage" source="app.runtime.stage" defaultValue="local"/>
     <springProperty scope="context" name="app.runtime.profile" source="app.runtime.profile" defaultValue="dev"/>
-    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="/logs/liea-dev"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="logs/liea-dev"/>
 
     <property name="LOG_FILE_PATTERN" value="${LOG_PATH}/${app.name}-%d{yyyy-MM-dd}.%i.log"/>
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
