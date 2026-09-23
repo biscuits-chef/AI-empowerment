@@ -73,7 +73,8 @@ class EnvironmentProfileConfigurationTest {
     @Test
     void externalVariablesOverrideXmlDefaults() {
         final MockEnvironment environment = new MockEnvironment()
-                .withProperty("DEV_QA_DEMO_MODE", "false");
+                .withProperty("DEV_QA_DEMO_MODE", "false")
+                .withProperty("DEV_LOG_PATH", "/custom/log/path");
         environment.setActiveProfiles("dev");
 
         processor.postProcessEnvironment(environment, new SpringApplication());

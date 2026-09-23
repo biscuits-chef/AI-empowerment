@@ -12,8 +12,9 @@
     <entry key="management.endpoint.health.show-details">when_authorized</entry>
     <entry key="app.runtime.stage">TEST</entry>
     <entry key="app.runtime.profile">test</entry>
+    <entry key="logging.file.path">${TEST_LOG_PATH:logs/liea-uat}</entry>
     <entry key="app.auth.mode">corporate</entry>
-    <entry key="app.auth.mock-user-id"></entry>
+    <entry key="app.auth.mock-user-id">dev-user-001</entry>
     <entry key="app.qa.demo-mode">${TEST_QA_DEMO_MODE:false}</entry>
     <entry key="app.business-query.enabled">${TEST_BUSINESS_QUERY_ENABLED:false}</entry>
     <entry key="app.company-model.enabled">${TEST_COMPANY_MODEL_ENABLED:false}</entry>
