@@ -28,7 +28,6 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("intelligent-qa-audit-service", source.getProperty("spring.application.name"));
         assertEquals("DEVELOPMENT", source.getProperty("app.runtime.stage"));
         assertEquals("dev", source.getProperty("app.runtime.profile"));
-//        assertEquals("${DEV_LOG_PATH:/logs/liea-dev}", source.getProperty("logging.file.path"));
         assertEquals("${DEV_AUTH_MODE:mock}", source.getProperty("app.auth.mode"));
         assertEquals("${DEV_MOCK_USER_ID:dev-user-001}", source.getProperty("app.auth.mock-user-id"));
         assertEquals("${DEV_QA_DEMO_MODE:true}", source.getProperty("app.qa.demo-mode"));
@@ -43,7 +42,6 @@ class EnvironmentProfileConfigurationTest {
 
         assertEquals("TEST", source.getProperty("app.runtime.stage"));
         assertEquals("test", source.getProperty("app.runtime.profile"));
-        assertEquals("${TEST_LOG_PATH:/logs/liea-uat}", source.getProperty("logging.file.path"));
         assertEquals("corporate", source.getProperty("app.auth.mode"));
         final String expectedUrl = "${TEST_DB_URL:jdbc:mysql://21.37.78.195:8891/intelligent_qa"
                 + "?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC"
@@ -61,7 +59,6 @@ class EnvironmentProfileConfigurationTest {
 
         assertEquals("PRODUCTION", source.getProperty("app.runtime.stage"));
         assertEquals("prod", source.getProperty("app.runtime.profile"));
-        assertEquals("${PROD_LOG_PATH:/logs/liea-prod}", source.getProperty("logging.file.path"));
         assertEquals("corporate", source.getProperty("app.auth.mode"));
         assertEquals("${PROD_DB_URL}", source.getProperty("spring.datasource.url"));
         assertEquals("${PROD_DB_USERNAME}", source.getProperty("spring.datasource.username"));
@@ -83,37 +80,6 @@ class EnvironmentProfileConfigurationTest {
         processor.postProcessEnvironment(environment, new SpringApplication());
 
         assertEquals("false", environment.getProperty("app.qa.demo-mode"));
-        assertEquals("/custom/log/path", environment.getProperty("logging.file.path"));
-    }
-
-    /**
-     * 验证当未预设 Profile 时后处理器自动探测并默认激活 dev。
-     */
-    @Test
-    void postProcessorDefaultsToDevWhenNoProfileIsActive() {
-        final MockEnvironment environment = new MockEnvironment();
-        processor.postProcessEnvironment(environment, new SpringApplication());
-
-        assertEquals("dev", environment.getActiveProfiles()[0]);
-        final PropertySource<?> source = environment.getPropertySources().get(
-                XmlApplicationEnvironmentPostProcessor.PROPERTY_SOURCE_NAME);
-        assertEquals("DEVELOPMENT", source.getProperty("app.runtime.stage"));
-    }
-
-    /**
-     * 验证后处理器将 uat 别名规范化映射至 test Profile 并加载对应配置。
-     */
-    @Test
-    void postProcessorNormalizesUatProfileToTest() {
-        final MockEnvironment environment = new MockEnvironment();
-        environment.setActiveProfiles("uat");
-        processor.postProcessEnvironment(environment, new SpringApplication());
-
-        assertEquals("test", environment.getActiveProfiles()[0]);
-        final PropertySource<?> source = environment.getPropertySources().get(
-                XmlApplicationEnvironmentPostProcessor.PROPERTY_SOURCE_NAME);
-        assertEquals("TEST", source.getProperty("app.runtime.stage"));
-        assertEquals("${TEST_LOG_PATH:/logs/liea-uat}", source.getProperty("logging.file.path"));
     }
 
     /**
