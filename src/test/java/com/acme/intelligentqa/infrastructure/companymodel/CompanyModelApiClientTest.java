@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.acme.intelligentqa.common.error.DependencyUnavailableException;
@@ -23,6 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
@@ -328,6 +330,189 @@ class CompanyModelApiClientTest {
         assertEquals("stream_end", result.finishReason());
         assertEquals(Collections.singletonList("复用回答"), chunks);
         assertEquals("existing-conv-99", capturedConversationId.get());
+        server.verify();
+    }
+
+    /**
+     * 验证能够容忍并剥离偶发的双重 data 前缀。
+     */
+    @Test
+    void handlesDoubleDataPrefixInEventStream() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-double-1\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andRespond(withSuccess(
+                        "data:data: {\"Answer\":\"双前缀正文\"}\n\n"
+                                + "data: [DONE]\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+        final List<String> chunks = new ArrayList<>();
+
+        final LanguageModelPort.GenerationResult result = client.generate(request("user-1"), chunks::add);
+
+        assertEquals("company-hiagent", result.modelCode());
+        assertEquals(Collections.singletonList("双前缀正文"), chunks);
+        server.verify();
+    }
+
+    /**
+     * 验证模型服务返回 HTTP 错误状态码时快速失败。
+     */
+    @Test
+    void failsFastOnHttpErrorStatusCode() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-err-1\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        final DependencyUnavailableException exception = assertThrows(
+                DependencyUnavailableException.class,
+                () -> client.generate(request("user-1"), value -> { }));
+
+        assertEquals("COMPANY_MODEL_HTTP_ERROR", exception.errorCode());
+        server.verify();
+    }
+
+    /**
+     * 验证模型返回错误事件时快速失败并保留原因。
+     */
+    @Test
+    void failsFastWhenModelReturnsErrorEvent() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-agent-err-1\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andRespond(withSuccess(
+                        "data: {\"event\":\"agent_error\",\"error_msg\":\"模型调用超时\"}\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+
+        final DependencyUnavailableException exception = assertThrows(
+                DependencyUnavailableException.class,
+                () -> client.generate(request("user-1"), value -> { }));
+
+        assertEquals("COMPANY_MODEL_AGENT_ERROR", exception.errorCode());
+        assertTrue(exception.getMessage().contains("模型调用超时"));
+        server.verify();
+    }
+
+    /**
+     * 验证能够从早期 message_start 事件捕获消息标识。
+     */
+    @Test
+    void capturesMessageIdFromMessageStartEvent() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-early-id-1\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andRespond(withSuccess(
+                        "data: {\"event\":\"message_start\",\"id\":\"msg-early-99\"}\n\n"
+                                + "data: {\"event\":\"message\",\"Answer\":\"正式正文\"}\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+        final AtomicReference<String> capturedMessageId = new AtomicReference<>();
+
+        client.generate(request("user-1"), value -> { }, new LanguageModelPort.GenerationControl() {
+            /**
+             * 判断回答是否已收到停止请求。
+             *
+             * @return 始终返回 false。
+             */
+            @Override
+            public boolean isCancellationRequested() {
+                return false;
+            }
+
+            /**
+             * 持久化消息 ID。
+             *
+             * @param messageId 公司模型消息 ID。
+             */
+            @Override
+            public void onMessageId(final String messageId) {
+                capturedMessageId.set(messageId);
+            }
+        });
+
+        assertEquals("msg-early-99", capturedMessageId.get());
+        server.verify();
+    }
+
+    /**
+     * 验证能够从嵌套的 JSON 字符串中解包回答正文。
+     */
+    @Test
+    void extractsAnswerFromNestedJsonString() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-inner-1\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andRespond(withSuccess(
+                        "data: {\"Answer\":\"{\\\"answer\\\":\\\"嵌套内层文本\\\"}\"}\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+        final List<String> chunks = new ArrayList<>();
+
+        final LanguageModelPort.GenerationResult result = client.generate(request("user-1"), chunks::add);
+
+        assertEquals("company-hiagent", result.modelCode());
+        assertEquals(Collections.singletonList("嵌套内层文本"), chunks);
+        server.verify();
+    }
+
+    /**
+     * 验证深度思考标签跨分片时被静默过滤且不泄露思考内容。
+     */
+    @Test
+    void silentlyFiltersThinkTagsAcrossStreamChunks() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-think-1\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andRespond(withSuccess(
+                        "data: {\"Answer\":\"<think>分析中\"}\n\n"
+                                + "data: {\"Answer\":\"<think>分析中...</think>最终正文\"}\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+        final List<String> chunks = new ArrayList<>();
+
+        final LanguageModelPort.GenerationResult result = client.generate(request("user-1"), chunks::add);
+
+        assertEquals("company-hiagent", result.modelCode());
+        assertEquals(Collections.singletonList("最终正文"), chunks);
         server.verify();
     }
 

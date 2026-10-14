@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +25,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -30,6 +33,16 @@ import org.springframework.web.client.RestTemplate;
  */
 @Component
 public final class CompanyModelApiClient {
+
+    /**
+     * 日志记录器。
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompanyModelApiClient.class);
+
+    /**
+     * 模型 HTTP 异常错误码。
+     */
+    private static final String CODE_HTTP_ERROR = "COMPANY_MODEL_HTTP_ERROR";
 
     /**
      * 公司模型创建会话接口路径。
@@ -116,35 +129,97 @@ public final class CompanyModelApiClient {
         requireEnabled();
         validateUserId(request.ownerId());
         try {
-            final String appConversationId;
-            if (request.appConversationId() != null && !request.appConversationId().trim().isEmpty()) {
-                appConversationId = request.appConversationId().trim();
-            } else {
-                appConversationId = createConversation(request.ownerId());
-            }
+            final String appConversationId = resolveAppConversationId(request);
             control.onAppConversationId(appConversationId);
+            final String query = promptFactory.create(request);
             final ChatQueryRequest body = new ChatQueryRequest(
-                    request.ownerId(), appConversationId, promptFactory.create(request), "streaming", false);
+                    request.ownerId(), appConversationId, query, "streaming", false);
             final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
-            restTemplate.execute(
-                    properties.baseUrl() + CHAT_QUERY_PATH,
-                    HttpMethod.POST,
-                    restTemplate.httpEntityCallback(new HttpEntity<>(body, headers())),
-                    response -> {
-                        readEventStream(response.getBody(), decoder, consumer, control);
-                        return null;
-                    });
+            final String url = properties.baseUrl() + CHAT_QUERY_PATH;
+            LOGGER.info("COMPANY MODEL API CALL -> POST {} (SSE streaming)", url);
+            logChatQuerySummary(query);
+            executeChatQuery(url, body, decoder, consumer, control);
             if (!decoder.hasAnswer()) {
                 throw new DependencyUnavailableException(
                         "COMPANY_MODEL_EMPTY_RESPONSE", "company model stream did not contain an Answer field");
             }
+            LOGGER.info("COMPANY MODEL SSE summary: messageId={}, chars={}",
+                    maskPlatformId(decoder.lastMessageId()), decoder.totalAnswerCharacters());
             return new LanguageModelPort.GenerationResult("company-hiagent", "stream_end");
         } catch (final DependencyUnavailableException exception) {
+            LOGGER.error("Company model generation failed: {}", exception.getMessage());
             throw exception;
+        } catch (final RestClientResponseException exception) {
+            LOGGER.error("Company model API HTTP error: status={}", exception.getRawStatusCode());
+            throw new DependencyUnavailableException(
+                    CODE_HTTP_ERROR,
+                    "company model API returned HTTP " + exception.getRawStatusCode(),
+                    exception);
         } catch (final RestClientException exception) {
+            LOGGER.error("Company model API request failed: {}", exception.getMessage());
             throw new DependencyUnavailableException(
                     "COMPANY_MODEL_UNAVAILABLE", "company model API request failed", exception);
         }
+    }
+
+    /**
+     * 执行流式问答 HTTP 请求并读取 SSE 数据流。
+     *
+     * @param url 请求 URL。
+     * @param body 请求体对象。
+     * @param decoder 公司模型事件解码器。
+     * @param consumer 事件订阅回调。
+     * @param control 生成取消状态控制器。
+     */
+    private void executeChatQuery(
+            final String url,
+            final ChatQueryRequest body,
+            final CompanyModelEventDecoder decoder,
+            final Consumer<String> consumer,
+            final LanguageModelPort.GenerationControl control) {
+        restTemplate.execute(
+                url,
+                HttpMethod.POST,
+                restTemplate.httpEntityCallback(new HttpEntity<>(body, headers())),
+                response -> {
+                    final int statusCode = response.getRawStatusCode();
+                    if (statusCode >= 400) {
+                        LOGGER.error("HTTP {} from {}", statusCode, url);
+                        throw new DependencyUnavailableException(
+                                CODE_HTTP_ERROR,
+                                "company model API returned HTTP " + statusCode);
+                    }
+                    LOGGER.info("COMPANY MODEL API SSE streaming started for: {}", url);
+                    readEventStream(url, response.getBody(), decoder, consumer, control);
+                    return null;
+                });
+    }
+
+    /**
+     * 打印流式问答请求摘要：只记录 Query 字符数与响应模式等非敏感元数据，
+     * 严禁打印 Query 提示词全文、UserID 与 AppConversationID，满足日志合规红线。
+     *
+     * @param query 组装后的模型查询提示词，仅取其长度用于诊断。
+     */
+    private void logChatQuerySummary(final String query) {
+        LOGGER.info("COMPANY MODEL CHAT REQUEST: queryChars={}, responseMode=streaming, pubAgentJump=false",
+                query == null ? 0 : query.length());
+    }
+
+    /**
+     * 对平台会话 ID 或消息 ID 做日志脱敏：只保留末 4 位供排查，其余遮蔽，避免平台标识明文落盘。
+     *
+     * @param platformId 平台标识；可为 null。
+     * @return 脱敏后的平台标识；入参为 null 或空时返回 null。
+     */
+    private String maskPlatformId(final String platformId) {
+        if (platformId == null || platformId.isEmpty()) {
+            return platformId;
+        }
+        if (platformId.length() <= 4) {
+            return "***";
+        }
+        return "***" + platformId.substring(platformId.length() - 4);
     }
 
     /**
@@ -160,16 +235,35 @@ public final class CompanyModelApiClient {
         if (messageId == null || messageId.trim().isEmpty()) {
             throw new IllegalArgumentException("messageId must not be blank");
         }
+        final String url = properties.baseUrl() + STOP_MESSAGE_PATH;
+        LOGGER.info("COMPANY MODEL API CALL -> POST {}", url);
+        final StopMessageRequest body = new StopMessageRequest(userId, messageId);
         try {
             restTemplate.exchange(
-                    properties.baseUrl() + STOP_MESSAGE_PATH,
+                    url,
                     HttpMethod.POST,
-                    new HttpEntity<>(new StopMessageRequest(userId, messageId), jsonHeaders()),
+                    new HttpEntity<>(body, jsonHeaders()),
                     Void.class);
+            LOGGER.info("COMPANY MODEL stop_message success: messageId={}", maskPlatformId(messageId));
         } catch (final RestClientException exception) {
+            LOGGER.error("COMPANY MODEL stop_message failed: messageId={}, error={}",
+                    maskPlatformId(messageId), exception.getMessage());
             throw new DependencyUnavailableException(
                     "COMPANY_MODEL_STOP_UNAVAILABLE", "company model stop_message request failed", exception);
         }
+    }
+
+    /**
+     * 解析已有或创建全新的公司模型会话标识。
+     *
+     * @param request 接口请求。
+     * @return 公司模型会话标识。
+     */
+    private String resolveAppConversationId(final LanguageModelPort.GenerationRequest request) {
+        if (request.appConversationId() != null && !request.appConversationId().trim().isEmpty()) {
+            return request.appConversationId().trim();
+        }
+        return createConversation(request.ownerId());
     }
 
     /**
@@ -180,22 +274,28 @@ public final class CompanyModelApiClient {
      * @return 创建公司模型会话。
      */
     private String createConversation(final String userId) {
+        final String url = properties.baseUrl() + CREATE_CONVERSATION_PATH;
+        LOGGER.info("COMPANY MODEL API CALL -> POST {}", url);
         final CreateConversationRequest body = new CreateConversationRequest(userId, Collections.emptyMap());
         final JsonNode response = restTemplate.postForObject(
-                properties.baseUrl() + CREATE_CONVERSATION_PATH,
+                url,
                 new HttpEntity<>(body, headers()),
                 JsonNode.class);
         final String conversationId = response == null
                 ? "" : response.path("Conversation").path("AppConversationID").asText("");
         if (conversationId.trim().isEmpty()) {
+            LOGGER.error("COMPANY MODEL create_conversation failed: missing AppConversationID");
             throw new DependencyUnavailableException(
                     "COMPANY_MODEL_INVALID_CONVERSATION", "create_conversation returned no AppConversationID");
         }
+        LOGGER.info("COMPANY MODEL create_conversation success: AppConversationID={}", maskPlatformId(conversationId));
         return conversationId;
     }
 
     /**
      * 增量读取公司模型 SSE 数据流。
+     *
+     * @param url 请求 URL。
      *
      * @param stream 订阅当前用户可访问的回答流。
      *
@@ -208,6 +308,7 @@ public final class CompanyModelApiClient {
      * @throws IOException 当输入、状态或依赖调用不满足执行条件时抛出。
      */
     private void readEventStream(
+            final String url,
             final java.io.InputStream stream,
             final CompanyModelEventDecoder decoder,
             final Consumer<String> consumer,
@@ -224,6 +325,8 @@ public final class CompanyModelApiClient {
                 accumulateEventLine(line, data, decoder, consumer, control);
             }
             flushEvent(data, decoder, consumer, control);
+            decoder.flush(consumer);
+            LOGGER.info("COMPANY MODEL SSE DONE: forwarded {} events from {}", decoder.eventCount(), url);
         }
     }
 
@@ -255,7 +358,10 @@ public final class CompanyModelApiClient {
         if (!line.startsWith("data:")) {
             return;
         }
-        final String eventLine = line.substring(5).trim();
+        String eventLine = line.substring(5).trim();
+        while (eventLine.startsWith("data:")) {
+            eventLine = eventLine.substring(5).trim();
+        }
         final int separatorLength = data.length() > 0 ? 1 : 0;
         if ((long) data.length() + separatorLength + eventLine.length()
                 > properties.maxRequestCharacters()) {
