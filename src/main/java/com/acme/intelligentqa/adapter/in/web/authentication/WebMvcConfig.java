@@ -3,6 +3,7 @@ package com.acme.intelligentqa.adapter.in.web.authentication;
 import com.acme.intelligentqa.config.UiasProperties;
 import com.spdb.speedstudio.uias.authentication.filter.SAMLAuthTomcatFilter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,6 +38,7 @@ public class WebMvcConfig {
      * @return UIAS认证过滤器的注册Bean。
      */
     @Bean
+    @ConditionalOnProperty(prefix = "app.auth", name = "mode", havingValue = "corporate")
     public FilterRegistrationBean<SAMLAuthTomcatFilter> uiasFilter() {
         FilterRegistrationBean<SAMLAuthTomcatFilter> registration = new FilterRegistrationBean<>();
 
