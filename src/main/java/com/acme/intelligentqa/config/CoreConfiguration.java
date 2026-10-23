@@ -77,27 +77,19 @@ public class CoreConfiguration {
      * 装配并执行运行环境保护校验。
      *
      * @param properties 配置参数。
-     *
-     * @param authenticationProperties 认证配置。
-     *
      * @param companyModelProperties 公司模型配置。
-     *
      * @param cancellationProperties 停止任务配置。
-     *
      * @param environment Spring 运行环境。
-     *
      * @return 装配并执行运行环境保护校验。
      */
     @Bean
     RuntimeEnvironmentGuard runtimeEnvironmentGuard(
             final RuntimeEnvironmentProperties properties,
-            final AuthenticationProperties authenticationProperties,
             final CompanyModelProperties companyModelProperties,
             final CancellationProperties cancellationProperties,
             final Environment environment) {
         return new RuntimeEnvironmentGuard(
-                properties, authenticationProperties, companyModelProperties,
-                cancellationProperties, environment);
+                properties, companyModelProperties, cancellationProperties, environment);
     }
 
     /**

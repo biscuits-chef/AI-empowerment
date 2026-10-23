@@ -24,25 +24,18 @@ public final class RuntimeEnvironmentGuard {
      * 创建 {@code RuntimeEnvironmentGuard} 实例。
      *
      * @param properties 配置参数。
-     *
-     * @param authenticationProperties 认证配置。
-     *
      * @param companyModelProperties 公司模型配置。
-     *
      * @param cancellationProperties 停止任务配置。
-     *
      * @param environment Spring 运行环境。
      */
     public RuntimeEnvironmentGuard(
             final RuntimeEnvironmentProperties properties,
-            final AuthenticationProperties authenticationProperties,
             final CompanyModelProperties companyModelProperties,
             final CancellationProperties cancellationProperties,
             final Environment environment) {
         this.activeProfile = findSingleEnvironmentProfile(environment.getActiveProfiles());
         validateProfileConsistency(properties, activeProfile);
         validateProductionDemoMode(properties, environment);
-        validateAuthenticationMode(properties, authenticationProperties);
         validateCancellationLease(companyModelProperties, cancellationProperties);
     }
 
@@ -97,21 +90,7 @@ public final class RuntimeEnvironmentGuard {
         }
     }
 
-    /**
-     * 校验模拟认证只能在开发环境使用。
-     *
-     * @param properties 运行环境配置。
-     *
-     * @param authenticationProperties 认证配置。
-     */
-    private static void validateAuthenticationMode(
-            final RuntimeEnvironmentProperties properties,
-            final AuthenticationProperties authenticationProperties) {
-        if (properties.stage() != RuntimeEnvironmentProperties.Stage.DEVELOPMENT
-                && authenticationProperties.mode() == AuthenticationProperties.Mode.MOCK) {
-            throw new IllegalStateException("mock authentication is only allowed in development");
-        }
-    }
+
 
     /**
      * 处理当前环境 Profile。

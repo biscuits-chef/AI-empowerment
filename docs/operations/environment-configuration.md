@@ -74,7 +74,7 @@ java -jar target/intelligent-qa-audit-service-0.1.0-SNAPSHOT.jar
 
 测试环境默认关闭演示模式和公司模型，只有显式完成依赖配置后才启用真实调用。不得把生产地址或生产凭据复制到测试环境。
 
-测试环境固定使用 `app.auth.mode=corporate`。测试替身应在测试代码中显式构造认证上下文，不得通过运行配置启用开发模拟用户。
+测试环境固定启用企业单点登录（`app.uias.enabled=true`）。测试替身应在测试代码中显式构造认证上下文，普通用户凭据通过 `TEST_AUTH_USERNAME` / `TEST_AUTH_PASSWORD` 注入。
 
 ## 生产环境
 

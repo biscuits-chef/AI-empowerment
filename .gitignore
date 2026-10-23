@@ -8,3 +8,4 @@ target/
 .env
 !.env.example
 dependency-reduced-pom.xml
+*.bundle

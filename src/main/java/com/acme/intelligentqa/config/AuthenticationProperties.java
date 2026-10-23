@@ -1,92 +1,112 @@
 package com.acme.intelligentqa.config;
 
-import java.util.Objects;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.ConstructorBinding;
 
 /**
- * 定义公司统一认证与开发模拟认证的运行配置。
+ * 定义用户账号密码认证的运行配置。
  */
 @ConfigurationProperties("app.auth")
-@ConstructorBinding
 public final class AuthenticationProperties {
 
     /**
-     * 当前认证模式。
+     * 默认用户登录账号。
      */
-    private final Mode mode;
-    /**
-     * 开发模拟用户的固定用户标识。
-     */
-    private final String mockUserId;
+    public static final String DEFAULT_USERNAME = "admin";
 
     /**
-     * 创建认证配置。
-     *
-     * @param mode 当前认证模式。
-     *
-     * @param mockUserId 开发模拟用户的固定用户标识。
+     * 用户登录账号；未配置时默认为 admin。
      */
-    public AuthenticationProperties(final Mode mode, final String mockUserId) {
-        this.mode = Objects.requireNonNull(mode, "app.auth.mode must be configured");
-        this.mockUserId = mode == Mode.MOCK ? requireText(mockUserId) : optionalText(mockUserId);
+    private final String username;
+    /**
+     * 用户登录密码；未配置时由系统随机生成。
+     */
+    private final String password;
+    /**
+     * 静态密码向下兼容字段；未配置时为空字符串。
+     */
+    private final String adminPassword;
+
+    /**
+     * 创建默认认证配置实例。
+     */
+    public AuthenticationProperties() {
+        this(null, null, null);
     }
 
     /**
-     * 返回当前认证模式。
+     * 创建指定密码的认证配置实例（向下兼容）。
      *
-     * @return 当前认证模式。
+     * @param password 用户登录密码。
      */
-    public Mode mode() {
-        return mode;
+    public AuthenticationProperties(final String password) {
+        this(null, password, password);
     }
 
     /**
-     * 返回开发模拟用户的固定用户标识。
+     * 创建指定用户名和密码的认证配置实例。
      *
-     * @return 开发模拟用户的固定用户标识；公司认证模式下可能为空字符串。
+     * @param username 用户登录账号。
+     * @param password 用户登录密码。
      */
-    public String mockUserId() {
-        return mockUserId;
+    public AuthenticationProperties(final String username, final String password) {
+        this(username, password, password);
     }
 
     /**
-     * 校验必填文本并返回去除首尾空白后的值。
+     * 创建认证配置完整实例。
      *
-     * @param value 待校验文本。
-     *
-     * @return 去除首尾空白后的文本。
+     * @param username 用户登录账号。
+     * @param password 用户登录密码。
+     * @param adminPassword 静态密码向下兼容字段。
      */
-    private static String requireText(final String value) {
-        final String normalized = optionalText(value);
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("app.auth.mock-user-id must be configured in mock mode");
-        }
-        return normalized;
+    @ConstructorBinding
+    public AuthenticationProperties(
+            final String username,
+            final String password,
+            final String adminPassword) {
+        final String resolvedUser = optionalText(username);
+        this.username = resolvedUser.isEmpty() ? DEFAULT_USERNAME : resolvedUser;
+        final String resolvedPassword = optionalText(password);
+        final String resolvedAdminPassword = optionalText(adminPassword);
+        this.password = resolvedPassword.isEmpty() ? resolvedAdminPassword : resolvedPassword;
+        this.adminPassword = resolvedAdminPassword.isEmpty() ? this.password : resolvedAdminPassword;
+    }
+
+    /**
+     * 返回用户登录账号。
+     *
+     * @return 用户登录账号。
+     */
+    public String username() {
+        return username;
+    }
+
+    /**
+     * 返回用户登录密码；未配置时为空字符串。
+     *
+     * @return 用户登录密码。
+     */
+    public String password() {
+        return password;
+    }
+
+    /**
+     * 返回管理员静态密码向下兼容值；未配置时为空字符串。
+     *
+     * @return 管理员密码兼容值。
+     */
+    public String adminPassword() {
+        return adminPassword;
     }
 
     /**
      * 将可选文本规范化为空字符串或去除首尾空白后的值。
      *
      * @param value 待规范化文本。
-     *
      * @return 规范化后的文本。
      */
     private static String optionalText(final String value) {
         return value == null ? "" : value.trim();
-    }
-
-    /**
-     * 系统支持的认证模式。
-     */
-    public enum Mode {
-        /**
-         * 公司统一认证模式。
-         */
-        CORPORATE,
-        /**
-         * 仅供开发环境使用的固定模拟用户模式。
-         */
-        MOCK
     }
 }

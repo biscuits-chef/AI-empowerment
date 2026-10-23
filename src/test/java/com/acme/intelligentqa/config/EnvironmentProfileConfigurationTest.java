@@ -28,8 +28,9 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("intelligent-qa-audit-service", source.getProperty("spring.application.name"));
         assertEquals("DEVELOPMENT", source.getProperty("app.runtime.stage"));
         assertEquals("dev", source.getProperty("app.runtime.profile"));
-        assertEquals("${DEV_AUTH_MODE:mock}", source.getProperty("app.auth.mode"));
-        assertEquals("${DEV_MOCK_USER_ID:dev-user-001}", source.getProperty("app.auth.mock-user-id"));
+        assertEquals("${DEV_UIAS_ENABLED:false}", source.getProperty("app.uias.enabled"));
+        assertEquals("${DEV_AUTH_USERNAME:admin}", source.getProperty("app.auth.username"));
+        assertEquals("${DEV_AUTH_PASSWORD:}", source.getProperty("app.auth.password"));
         assertEquals("${DEV_QA_DEMO_MODE:true}", source.getProperty("app.qa.demo-mode"));
     }
 
@@ -42,7 +43,9 @@ class EnvironmentProfileConfigurationTest {
 
         assertEquals("TEST", source.getProperty("app.runtime.stage"));
         assertEquals("test", source.getProperty("app.runtime.profile"));
-        assertEquals("corporate", source.getProperty("app.auth.mode"));
+        assertEquals("${TEST_UIAS_ENABLED:true}", source.getProperty("app.uias.enabled"));
+        assertEquals("${TEST_AUTH_USERNAME:admin}", source.getProperty("app.auth.username"));
+        assertEquals("${TEST_AUTH_PASSWORD:}", source.getProperty("app.auth.password"));
         final String expectedUrl = "${TEST_DB_URL:jdbc:mysql://21.37.78.195:8891/intelligent_qa"
                 + "?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC"
                 + "&allowPublicKeyRetrieval=true&useSSL=false}";
@@ -59,7 +62,9 @@ class EnvironmentProfileConfigurationTest {
 
         assertEquals("PRODUCTION", source.getProperty("app.runtime.stage"));
         assertEquals("prod", source.getProperty("app.runtime.profile"));
-        assertEquals("corporate", source.getProperty("app.auth.mode"));
+        assertEquals("${PROD_UIAS_ENABLED:true}", source.getProperty("app.uias.enabled"));
+        assertEquals("${PROD_AUTH_USERNAME:admin}", source.getProperty("app.auth.username"));
+        assertEquals("${PROD_AUTH_PASSWORD:}", source.getProperty("app.auth.password"));
         assertEquals("${PROD_DB_URL}", source.getProperty("spring.datasource.url"));
         assertEquals("${PROD_DB_USERNAME}", source.getProperty("spring.datasource.username"));
         assertEquals("${PROD_DB_PASSWORD}", source.getProperty("spring.datasource.password"));

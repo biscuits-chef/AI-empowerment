@@ -93,11 +93,11 @@ com.acme.intelligentqa
 
 部署通过 `SPRING_PROFILES_ACTIVE` 选择且只能选择 `dev`、`test`、`prod` 之一。`app.runtime.stage` 必须与 Profile 一致。密钥、密码、令牌和真实地址只能通过环境变量或密钥平台注入，不进入仓库。
 
-认证模式建议使用 `app.auth.mode=mock|corporate`，并由启动校验器强制：
+认证支持企业单点登录与普通用户账号密码双通道认证：
 
-- `dev` 可配置为 `mock` 或 `corporate`；模拟用户必须有醒目标识和固定审计字段。
-- `test`、`prod` 只能使用 `corporate`；发现 `mock` 时启动失败。
-- 业务代码只依赖 `CurrentUserPort`，不得读取前端传入的用户 ID 作为可信身份。
+- `app.uias.enabled=true|false` 控制是否加载企业 UIAS SAML SSO 过滤器（开发环境默认 `false`，测试/生产默认 `true`）。
+- `app.auth.username` 与 `app.auth.password` 配置普通用户登录凭据（默认用户名为 `admin`，密码未配置时启动自动随机生成）。
+- 业务代码只依赖认证主体与 Session，未登录访问业务接口统一返回 401，不得读取前端传入的用户 ID 作为可信身份。
 
 Jetty 线程、连接空闲超时、SSE 长连接、上传大小、请求队列和优雅停机参数必须通过容量测试确定。
 

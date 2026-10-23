@@ -1,52 +1,61 @@
 package com.acme.intelligentqa.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
 /**
- * 验证认证配置的规范化和安全校验。
+ * 验证用户账号密码认证配置的规范化与解析行为。
  */
 class AuthenticationPropertiesTest {
 
     /**
-     * 验证模拟模式规范化固定用户标识。
+     * 验证未配置任何参数时默认用户名为 admin 且密码为空字符串。
      */
     @Test
-    void normalizesMockUserId() {
+    void resolvesDefaultUsernameWhenNotConfigured() {
+        final AuthenticationProperties properties = new AuthenticationProperties();
+
+        assertEquals("admin", properties.username());
+        assertEquals("", properties.password());
+        assertEquals("", properties.adminPassword());
+    }
+
+    /**
+     * 验证配置自定义用户名与密码时去除首尾空白。
+     */
+    @Test
+    void normalizesConfiguredUsernameAndPassword() {
         final AuthenticationProperties properties = new AuthenticationProperties(
-                AuthenticationProperties.Mode.MOCK, "  dev-user-001  ");
+                "  custom_user  ", "  pass123!  ");
 
-        assertEquals(AuthenticationProperties.Mode.MOCK, properties.mode());
-        assertEquals("dev-user-001", properties.mockUserId());
+        assertEquals("custom_user", properties.username());
+        assertEquals("pass123!", properties.password());
+        assertEquals("pass123!", properties.adminPassword());
     }
 
     /**
-     * 验证模拟模式拒绝空用户标识。
+     * 验证兼容单参数密码构造器。
      */
     @Test
-    void rejectsBlankMockUserId() {
-        assertThrows(IllegalArgumentException.class, () -> new AuthenticationProperties(
-                AuthenticationProperties.Mode.MOCK, "  "));
+    void supportsSinglePasswordConstructor() {
+        final AuthenticationProperties properties = new AuthenticationProperties("secretPass999");
+
+        assertEquals("admin", properties.username());
+        assertEquals("secretPass999", properties.password());
+        assertEquals("secretPass999", properties.adminPassword());
     }
 
     /**
-     * 验证公司认证模式允许不配置模拟用户标识。
+     * 验证向下兼容的 adminPassword 在未配置 password 时生效。
      */
     @Test
-    void allowsMissingMockUserIdInCorporateMode() {
+    void fallsBackToAdminPasswordWhenPasswordOmitted() {
         final AuthenticationProperties properties = new AuthenticationProperties(
-                AuthenticationProperties.Mode.CORPORATE, null);
+                "admin", null, "compatPass888");
 
-        assertEquals("", properties.mockUserId());
-    }
-
-    /**
-     * 验证认证模式为必填配置。
-     */
-    @Test
-    void rejectsMissingAuthenticationMode() {
-        assertThrows(NullPointerException.class, () -> new AuthenticationProperties(null, "user"));
+        assertEquals("admin", properties.username());
+        assertEquals("compatPass888", properties.password());
+        assertEquals("compatPass888", properties.adminPassword());
     }
 }

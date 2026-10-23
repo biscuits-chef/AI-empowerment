@@ -71,4 +71,7 @@
     <entry key="datahub.config.obs-upload-conf.part-size">${DATAHUB_OBS_UPLOAD_PART_SIZE:50}</entry>
     <entry key="datahub.config.obs-upload-conf.listener">${DATAHUB_OBS_UPLOAD_LISTENER:false}</entry>
     <entry key="datahub.config.obs-upload-conf.enable-checkpoint">${DATAHUB_OBS_UPLOAD_ENABLE_CHECKPOINT:true}</entry>
+    <entry key="app.uias.enabled">${UIAS_ENABLED:false}</entry>
+    <entry key="app.auth.username">${APP_AUTH_USERNAME:admin}</entry>
+    <entry key="app.auth.password">${APP_AUTH_PASSWORD:}</entry>
 </properties>

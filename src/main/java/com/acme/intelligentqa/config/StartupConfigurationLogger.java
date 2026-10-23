@@ -54,7 +54,7 @@ public class StartupConfigurationLogger implements ApplicationRunner {
     public void run(final ApplicationArguments args) {
         LOGGER.info("==================== [服务启动生效配置清单] ====================");
         LOGGER.info(">>> 激活环境 Profile: {}", Arrays.toString(environment.getActiveProfiles()));
-        LOGGER.info(">>> 认证模式 (app.auth.mode): {}", environment.getProperty("app.auth.mode"));
+        LOGGER.info(">>> 企业单点登录 (app.uias.enabled): {}", environment.getProperty("app.uias.enabled", "false"));
 
         final Map<String, String> properties = collectApplicationProperties();
         for (final Map.Entry<String, String> entry : properties.entrySet()) {
@@ -71,7 +71,8 @@ public class StartupConfigurationLogger implements ApplicationRunner {
     private Map<String, String> collectApplicationProperties() {
         final Map<String, String> properties = new TreeMap<>();
         for (final PropertySource<?> propertySource : environment.getPropertySources()) {
-            if (propertySource instanceof EnumerablePropertySource<?> enumerable) {
+            if (propertySource instanceof EnumerablePropertySource<?>) {
+                final EnumerablePropertySource<?> enumerable = (EnumerablePropertySource<?>) propertySource;
                 for (final String propertyName : enumerable.getPropertyNames()) {
                     if (isApplicationProperty(propertyName) && !properties.containsKey(propertyName)) {
                         final String rawValue = environment.getProperty(propertyName);

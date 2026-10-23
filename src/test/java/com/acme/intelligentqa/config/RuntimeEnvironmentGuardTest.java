@@ -20,7 +20,6 @@ class RuntimeEnvironmentGuardTest {
         environment.setActiveProfiles("test");
         final RuntimeEnvironmentGuard guard = guard(
                 RuntimeEnvironmentProperties.Stage.TEST,
-                AuthenticationProperties.Mode.CORPORATE,
                 environment);
 
         assertEquals("test", guard.activeProfile());
@@ -34,8 +33,7 @@ class RuntimeEnvironmentGuardTest {
         final MockEnvironment environment = new MockEnvironment();
 
         assertThrows(IllegalStateException.class, () -> guard(
-                RuntimeEnvironmentProperties.Stage.TEST,
-                AuthenticationProperties.Mode.CORPORATE, environment));
+                RuntimeEnvironmentProperties.Stage.TEST, environment));
     }
 
     /**
@@ -47,8 +45,7 @@ class RuntimeEnvironmentGuardTest {
         environment.setActiveProfiles("dev", "prod");
 
         assertThrows(IllegalStateException.class, () -> guard(
-                RuntimeEnvironmentProperties.Stage.DEVELOPMENT,
-                AuthenticationProperties.Mode.MOCK, environment));
+                RuntimeEnvironmentProperties.Stage.DEVELOPMENT, environment));
     }
 
     /**
@@ -60,8 +57,7 @@ class RuntimeEnvironmentGuardTest {
         environment.setActiveProfiles("prod");
 
         assertThrows(IllegalStateException.class, () -> guard(
-                RuntimeEnvironmentProperties.Stage.TEST,
-                AuthenticationProperties.Mode.CORPORATE, environment));
+                RuntimeEnvironmentProperties.Stage.TEST, environment));
     }
 
     /**
@@ -74,49 +70,21 @@ class RuntimeEnvironmentGuardTest {
         environment.setActiveProfiles("prod");
 
         assertThrows(IllegalStateException.class, () -> guard(
-                RuntimeEnvironmentProperties.Stage.PRODUCTION,
-                AuthenticationProperties.Mode.CORPORATE, environment));
+                RuntimeEnvironmentProperties.Stage.PRODUCTION, environment));
     }
 
     /**
-     * 验证开发环境允许启用服务端固定模拟用户。
+     * 验证开发环境允许启动。
      */
     @Test
-    void acceptsMockAuthenticationInDevelopment() {
+    void acceptsDevelopmentEnvironment() {
         final MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("dev");
 
         final RuntimeEnvironmentGuard guard = guard(
-                RuntimeEnvironmentProperties.Stage.DEVELOPMENT,
-                AuthenticationProperties.Mode.MOCK, environment);
+                RuntimeEnvironmentProperties.Stage.DEVELOPMENT, environment);
 
         assertEquals("dev", guard.activeProfile());
-    }
-
-    /**
-     * 验证测试环境不能通过外部配置启用模拟认证。
-     */
-    @Test
-    void rejectsMockAuthenticationInTest() {
-        final MockEnvironment environment = new MockEnvironment();
-        environment.setActiveProfiles("test");
-
-        assertThrows(IllegalStateException.class, () -> guard(
-                RuntimeEnvironmentProperties.Stage.TEST,
-                AuthenticationProperties.Mode.MOCK, environment));
-    }
-
-    /**
-     * 验证生产环境不能通过外部配置启用模拟认证。
-     */
-    @Test
-    void rejectsMockAuthenticationInProduction() {
-        final MockEnvironment environment = new MockEnvironment();
-        environment.setActiveProfiles("prod");
-
-        assertThrows(IllegalStateException.class, () -> guard(
-                RuntimeEnvironmentProperties.Stage.PRODUCTION,
-                AuthenticationProperties.Mode.MOCK, environment));
     }
 
     /**
@@ -133,7 +101,6 @@ class RuntimeEnvironmentGuardTest {
 
         assertThrows(IllegalStateException.class, () -> new RuntimeEnvironmentGuard(
                 properties(RuntimeEnvironmentProperties.Stage.PRODUCTION),
-                authentication(AuthenticationProperties.Mode.CORPORATE),
                 companyModel, cancellation, environment));
     }
 
@@ -141,16 +108,14 @@ class RuntimeEnvironmentGuardTest {
      * 创建具备安全默认依赖配置的运行环境保护器。
      *
      * @param stage 运行环境标识。
-     * @param mode 认证模式。
      * @param environment Spring 运行环境。
      * @return 已完成校验的运行环境保护器。
      */
     private RuntimeEnvironmentGuard guard(
             final RuntimeEnvironmentProperties.Stage stage,
-            final AuthenticationProperties.Mode mode,
             final MockEnvironment environment) {
         return new RuntimeEnvironmentGuard(
-                properties(stage), authentication(mode),
+                properties(stage),
                 new CompanyModelProperties(false, false, "", 3000, 120000, 10000),
                 new CancellationProperties(1000, 130000, 2000, 30000, 3, 10),
                 environment);
@@ -160,21 +125,9 @@ class RuntimeEnvironmentGuardTest {
      * 处理配置参数。
      *
      * @param stage 运行环境标识。
-     *
      * @return 配置参数。
      */
     private RuntimeEnvironmentProperties properties(final RuntimeEnvironmentProperties.Stage stage) {
         return new RuntimeEnvironmentProperties(stage, stage.profile());
-    }
-
-    /**
-     * 创建指定模式的认证配置。
-     *
-     * @param mode 认证模式。
-     *
-     * @return 认证配置。
-     */
-    private AuthenticationProperties authentication(final AuthenticationProperties.Mode mode) {
-        return new AuthenticationProperties(mode, "dev-user-001");
     }
 }

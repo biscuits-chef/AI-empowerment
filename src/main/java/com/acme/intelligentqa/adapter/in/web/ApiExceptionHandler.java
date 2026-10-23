@@ -2,6 +2,7 @@ package com.acme.intelligentqa.adapter.in.web;
 
 import com.acme.intelligentqa.common.error.AuthenticationRequiredException;
 import com.acme.intelligentqa.common.error.AnswerAlreadyTerminalException;
+import com.acme.intelligentqa.common.error.BadCredentialsException;
 import com.acme.intelligentqa.common.error.DependencyUnavailableException;
 import com.acme.intelligentqa.common.error.ConversationActiveException;
 import com.acme.intelligentqa.common.error.EventReplayGapException;
@@ -53,6 +54,24 @@ public class ApiExceptionHandler {
                 "Authentication required", "请先完成公司统一认证", request);
         LOGGER.warn("未认证请求: method={} uri={} traceId={}",
                 request.getMethod(), request.getRequestURI(), traceIdOf(response));
+        return response;
+    }
+
+    /**
+     * 将用户名或密码错误异常转换为安全认证失败响应。
+     *
+     * @param exception 待转换的原始异常。
+     * @param request 接口请求。
+     * @return 认证失败问题响应。
+     */
+    @ExceptionHandler(BadCredentialsException.class)
+    ResponseEntity<ApiProblem> handleBadCredentials(
+            final BadCredentialsException exception,
+            final HttpServletRequest request) {
+        final ResponseEntity<ApiProblem> response = problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS",
+                "Invalid credentials", "用户名或密码错误", request);
+        LOGGER.warn("认证失败: URI={} method={} traceId={}",
+                request.getRequestURI(), request.getMethod(), traceIdOf(response));
         return response;
     }
 

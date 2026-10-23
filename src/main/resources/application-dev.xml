@@ -14,8 +14,9 @@
     <entry key="app.runtime.stage">DEVELOPMENT</entry>
     <entry key="app.runtime.profile">dev</entry>
     <entry key="logging.file.path">${DEV_LOG_PATH:logs/liea-dev}</entry>
-    <entry key="app.auth.mode">${DEV_AUTH_MODE:mock}</entry>
-    <entry key="app.auth.mock-user-id">${DEV_MOCK_USER_ID:dev-user-001}</entry>
+    <entry key="app.uias.enabled">${DEV_UIAS_ENABLED:false}</entry>
+    <entry key="app.auth.username">${DEV_AUTH_USERNAME:admin}</entry>
+    <entry key="app.auth.password">${DEV_AUTH_PASSWORD:}</entry>
     <entry key="app.qa.demo-mode">${DEV_QA_DEMO_MODE:true}</entry>
     <entry key="app.business-query.enabled">${DEV_BUSINESS_QUERY_ENABLED:true}</entry>
     <entry key="app.company-model.enabled">${DEV_COMPANY_MODEL_ENABLED:false}</entry>

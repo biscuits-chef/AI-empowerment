@@ -38,11 +38,12 @@ public class WebMvcConfig {
      * @return UIAS认证过滤器的注册Bean。
      */
     @Bean
-    @ConditionalOnProperty(prefix = "app.auth", name = "mode", havingValue = "corporate")
-    public FilterRegistrationBean<SAMLAuthTomcatFilter> uiasFilter() {
-        FilterRegistrationBean<SAMLAuthTomcatFilter> registration = new FilterRegistrationBean<>();
+    @ConditionalOnProperty(name = "app.uias.enabled", havingValue = "true")
+    public FilterRegistrationBean<UiasDelegatingFilter> uiasFilter() {
+        FilterRegistrationBean<UiasDelegatingFilter> registration = new FilterRegistrationBean<>();
 
-        SAMLAuthTomcatFilter filter = new SAMLAuthTomcatFilter();
+        SAMLAuthTomcatFilter rawFilter = new SAMLAuthTomcatFilter();
+        UiasDelegatingFilter filter = new UiasDelegatingFilter(rawFilter);
 
         registration.setFilter(filter);
         registration.addUrlPatterns(uiasProperties.urlPattern());

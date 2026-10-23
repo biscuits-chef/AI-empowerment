@@ -14,8 +14,9 @@
     <entry key="app.runtime.stage">PRODUCTION</entry>
     <entry key="app.runtime.profile">prod</entry>
     <entry key="logging.file.path">${PROD_LOG_PATH:logs/liea-prod}</entry>
-    <entry key="app.auth.mode">corporate</entry>
-    <entry key="app.auth.mock-user-id"></entry>
+    <entry key="app.uias.enabled">${PROD_UIAS_ENABLED:true}</entry>
+    <entry key="app.auth.username">${PROD_AUTH_USERNAME:admin}</entry>
+    <entry key="app.auth.password">${PROD_AUTH_PASSWORD:}</entry>
     <entry key="app.qa.demo-mode">false</entry>
     <entry key="app.business-query.enabled">${PROD_BUSINESS_QUERY_ENABLED:false}</entry>
     <entry key="app.company-model.enabled">true</entry>
