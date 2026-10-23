@@ -31,7 +31,7 @@ class EnvironmentProfileConfigurationTest {
         assertEquals("${DEV_UIAS_ENABLED:false}", source.getProperty("app.uias.enabled"));
         assertEquals("${DEV_AUTH_USERNAME:admin}", source.getProperty("app.auth.username"));
         assertEquals("${DEV_AUTH_PASSWORD:}", source.getProperty("app.auth.password"));
-        assertEquals("${DEV_QA_DEMO_MODE:true}", source.getProperty("app.qa.demo-mode"));
+        assertEquals("${DEV_QA_DEMO_MODE:false}", source.getProperty("app.qa.demo-mode"));
     }
 
     /**

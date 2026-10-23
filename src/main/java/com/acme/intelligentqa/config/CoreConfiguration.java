@@ -1,6 +1,7 @@
 package com.acme.intelligentqa.config;
 
 import com.acme.intelligentqa.infrastructure.VectorStoreClient;
+import com.acme.intelligentqa.infrastructure.companymodel.SimulatedCompanyModelHttpInterceptor;
 import com.acme.intelligentqa.domain.service.PhaseOneBusinessQueryPlanner;
 import com.acme.intelligentqa.domain.service.PhaseOneBusinessSemanticCatalog;
 import com.acme.intelligentqa.domain.service.PhaseOneBusinessSemanticParser;
@@ -150,6 +151,8 @@ public class CoreConfiguration {
         return builder
                 .requestFactory(() -> requestFactory)
                 .additionalMessageConverters(stringConverter)
+                // 模拟大模型 HTTP 原始报文响应（方便注释与验证；接入真实外部服务时只需注释此行）：
+                .additionalInterceptors(new SimulatedCompanyModelHttpInterceptor())
                 .build();
     }
 

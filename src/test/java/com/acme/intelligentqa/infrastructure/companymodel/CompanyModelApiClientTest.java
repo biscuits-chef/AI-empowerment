@@ -490,10 +490,10 @@ class CompanyModelApiClientTest {
     }
 
     /**
-     * 验证深度思考标签跨分片时被静默过滤且不泄露思考内容。
+     * 验证深度思考标签与正文完整透传以支持前端独立渲染折叠框。
      */
     @Test
-    void silentlyFiltersThinkTagsAcrossStreamChunks() {
+    void preservesThinkTagsAcrossStreamChunks() {
         final RestTemplate restTemplate = new RestTemplate();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         final CompanyModelProperties properties = properties(true);
@@ -513,7 +513,7 @@ class CompanyModelApiClientTest {
         final LanguageModelPort.GenerationResult result = client.generate(request("user-1"), chunks::add);
 
         assertEquals("company-hiagent", result.modelCode());
-        assertEquals(Collections.singletonList("最终正文"), chunks);
+        assertEquals(Arrays.asList("<think>", "分析中", "...", "</think>", "最终正文"), chunks);
         server.verify();
     }
 

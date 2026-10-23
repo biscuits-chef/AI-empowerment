@@ -575,7 +575,9 @@ public class QuestionAnswerController {
             this.completedAt = answer.completedAt();
             this.cancelRequestedAt = answer.cancelRequestedAt();
             this.cancelledAt = answer.cancelledAt();
-            this.recQuestions = answer.recQuestions();
+            this.recQuestions = answer.recQuestions() == null
+                    ? Collections.emptyList()
+                    : Collections.unmodifiableList(new ArrayList<>(answer.recQuestions()));
             this.timeCost = answer.timeCost();
         }
 
@@ -682,7 +684,9 @@ public class QuestionAnswerController {
          *
          * @return 推荐追问问题列表。
          */
-        public List<String> getRecQuestions() { return recQuestions; }
+        public List<String> getRecQuestions() {
+            return Collections.unmodifiableList(recQuestions);
+        }
         /**
          * 返回智能体平台调用耗时。
          *

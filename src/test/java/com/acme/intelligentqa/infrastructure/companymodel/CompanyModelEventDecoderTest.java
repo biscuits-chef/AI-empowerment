@@ -76,12 +76,12 @@ class CompanyModelEventDecoderTest {
     }
 
     /**
-     * 验证深度思考标签跨分片时被静默过滤且不泄露思考内容。
+     * 验证跨数据块场景下深度思考标签与正文完整透传以支持前端独立渲染折叠框。
      *
      * @throws IOException 当解析发生 IO 错误时抛出。
      */
     @Test
-    void silentlyFiltersThinkTagsAcrossMultipleChunks() throws IOException {
+    void preservesThinkTagsAcrossMultipleChunks() throws IOException {
         final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
         final List<String> chunks = new ArrayList<>();
 
@@ -93,20 +93,21 @@ class CompanyModelEventDecoderTest {
         decoder.flush(chunks::add);
 
         assertTrue(decoder.hasAnswer());
-        assertEquals(java.util.Arrays.asList("根据数据分析，", "结果为合格。"), chunks);
+        assertEquals(java.util.Arrays.asList(
+                "<think>", "正在", "思考业务背景", "</think>", "根据数据分析，", "结果为合格。"), chunks);
     }
 
     /**
-     * 验证仅有思考标签而无正式正文时判定为无有效回答。
+     * 验证无有效正文内容帧时判定为无有效回答。
      *
      * @throws IOException 当解析发生 IO 错误时抛出。
      */
     @Test
-    void reportsNoAnswerWhenOnlyThinkTagsPresent() throws IOException {
+    void reportsNoAnswerWhenNoContentPresent() throws IOException {
         final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
         final List<String> chunks = new ArrayList<>();
 
-        decoder.accept("{\"Answer\":\"<think>仅有思考内容</think>\"}", chunks::add);
+        decoder.accept("{\"event\":\"message_start\",\"id\":\"msg-1\"}", chunks::add);
         decoder.flush(chunks::add);
 
         assertFalse(decoder.hasAnswer());

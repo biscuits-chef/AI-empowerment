@@ -17,11 +17,11 @@
     <entry key="app.uias.enabled">${DEV_UIAS_ENABLED:false}</entry>
     <entry key="app.auth.username">${DEV_AUTH_USERNAME:admin}</entry>
     <entry key="app.auth.password">${DEV_AUTH_PASSWORD:}</entry>
-    <entry key="app.qa.demo-mode">${DEV_QA_DEMO_MODE:true}</entry>
+    <entry key="app.qa.demo-mode">${DEV_QA_DEMO_MODE:false}</entry>
     <entry key="app.business-query.enabled">${DEV_BUSINESS_QUERY_ENABLED:true}</entry>
-    <entry key="app.company-model.enabled">${DEV_COMPANY_MODEL_ENABLED:false}</entry>
-    <entry key="app.company-model.stream-contract-verified">${DEV_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED:false}</entry>
-    <entry key="app.company-model.base-url">${DEV_COMPANY_MODEL_BASE_URL:}</entry>
+    <entry key="app.company-model.enabled">${DEV_COMPANY_MODEL_ENABLED:true}</entry>
+    <entry key="app.company-model.stream-contract-verified">${DEV_COMPANY_MODEL_STREAM_CONTRACT_VERIFIED:true}</entry>
+    <entry key="app.company-model.base-url">${DEV_COMPANY_MODEL_BASE_URL:http://company-hiagent-service}</entry>
     <entry key="app.redis.enabled">${DEV_REDIS_ENABLED:false}</entry>
     <entry key="app.obs.enabled">${DEV_OBS_ENABLED:false}</entry>
     <entry key="app.file.storage-mode">${DEV_FILE_STORAGE_MODE:local}</entry>

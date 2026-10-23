@@ -361,7 +361,7 @@ final class CompanyModelEventDecoder {
         final String rest = content.substring(ltPos);
         final int tagLength = matchTagLength(rest);
         if (tagLength > 0) {
-            applyTag(rest.substring(0, tagLength));
+            applyTag(rest.substring(0, tagLength), consumer);
             return ltPos + tagLength;
         }
         final int gt = content.indexOf('>', ltPos);
@@ -373,13 +373,13 @@ final class CompanyModelEventDecoder {
     }
 
     /**
-     * 按当前思考状态将非思考文本输出给回调。
+     * 将有效增量文本输出给回调。
      *
      * @param text 待输出文本。
      * @param consumer 事件订阅回调。
      */
     private void emitFilteredText(final String text, final Consumer<String> consumer) {
-        if (text.isEmpty() || inThink) {
+        if (text.isEmpty()) {
             return;
         }
         hasEmittedAnswer = true;
@@ -410,15 +410,18 @@ final class CompanyModelEventDecoder {
     }
 
     /**
-     * 应用标签状态变更。
+     * 应用标签状态变更，将深度思考标签透传给调用方以支持独立思考折叠渲染。
      *
      * @param tag 已匹配标签文本。
+     * @param consumer 事件订阅回调。
      */
-    private void applyTag(final String tag) {
+    private void applyTag(final String tag, final Consumer<String> consumer) {
         if (TAG_THINK_OPEN.equals(tag)) {
             inThink = true;
+            emitFilteredText(tag, consumer);
         } else if (TAG_THINK_CLOSE.equals(tag)) {
             inThink = false;
+            emitFilteredText(tag, consumer);
         }
     }
 

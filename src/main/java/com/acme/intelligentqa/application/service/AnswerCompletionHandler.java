@@ -15,6 +15,26 @@ import java.util.Objects;
  */
 class AnswerCompletionHandler {
 
+    /**
+     * 阶段开始状态文本常量。
+     */
+    private static final String VALUE_STARTED = "STARTED";
+
+    /**
+     * 改写问题事件名称与属性键。
+     */
+    private static final String KEY_REWRITE_QUERY = "rewrite_query";
+
+    /**
+     * SQL 业务查询事件名称与属性键。
+     */
+    private static final String KEY_SQL_MESSAGE = "sql_message";
+
+    /**
+     * 知识库引用扩展属性键。
+     */
+    private static final String KEY_DOC_REFERENCE = "doc_reference_json";
+
     /** 回答仓储出站端口。 */
     private final AnswerRepositoryPort answerRepository;
     /** 流式事件发布出站端口。 */
@@ -76,24 +96,72 @@ class AnswerCompletionHandler {
         if (extra == null || extra.isEmpty()) {
             return;
         }
-        if (extra.containsKey("rewrite_query") && extra.get("rewrite_query") != null) {
-            eventPort.publish(answer.id(), "intent_recognition_started", "STARTED");
-            eventPort.publish(answer.id(), "rewrite_query", String.valueOf(extra.get("rewrite_query")));
+        broadcastRewriteQuery(answer, extra);
+        broadcastDocReferences(answer, extra);
+        broadcastSqlMessage(answer, extra);
+        broadcastReconciliation(answer, extra);
+    }
+
+    /**
+     * 广播意图识别与问题改写审计事件。
+     *
+     * @param answer 回答领域快照。
+     * @param extra 动态扩展字段集合。
+     */
+    private void broadcastRewriteQuery(
+            final AnswerSnapshot answer,
+            final Map<String, Object> extra) {
+        if (extra.containsKey(KEY_REWRITE_QUERY) && extra.get(KEY_REWRITE_QUERY) != null) {
+            eventPort.publish(answer.id(), "intent_recognition_started", VALUE_STARTED);
+            eventPort.publish(answer.id(), KEY_REWRITE_QUERY, String.valueOf(extra.get(KEY_REWRITE_QUERY)));
             eventPort.publish(answer.id(), "intent_recognized", "PRODUCT_TRADE_BASIC_INFO|98|2");
         }
-        if (extra.containsKey("doc_reference_json") && extra.get("doc_reference_json") != null) {
-            eventPort.publish(answer.id(), "retrieval_started", "STARTED");
+    }
+
+    /**
+     * 广播知识库检索与文档引用审计事件。
+     *
+     * @param answer 回答领域快照。
+     * @param extra 动态扩展字段集合。
+     */
+    private void broadcastDocReferences(
+            final AnswerSnapshot answer,
+            final Map<String, Object> extra) {
+        if (extra.containsKey(KEY_DOC_REFERENCE) && extra.get(KEY_DOC_REFERENCE) != null) {
+            eventPort.publish(answer.id(), "retrieval_started", VALUE_STARTED);
             eventPort.publish(answer.id(), "citation", "《浦银理财产品管理规范_2024版》第12页");
             eventPort.publish(answer.id(), "citation", "《理财产品业务办理操作指引》第5页");
             eventPort.publish(answer.id(), "knowledge_retrieval_completed", "2");
         }
-        if (extra.containsKey("sql_message") && extra.get("sql_message") != null) {
-            eventPort.publish(answer.id(), "business_query_started", "STARTED");
-            eventPort.publish(answer.id(), "sql_message", String.valueOf(extra.get("sql_message")));
+    }
+
+    /**
+     * 广播业务数据库查询与 SQL 审计事件。
+     *
+     * @param answer 回答领域快照。
+     * @param extra 动态扩展字段集合。
+     */
+    private void broadcastSqlMessage(
+            final AnswerSnapshot answer,
+            final Map<String, Object> extra) {
+        if (extra.containsKey(KEY_SQL_MESSAGE) && extra.get(KEY_SQL_MESSAGE) != null) {
+            eventPort.publish(answer.id(), "business_query_started", VALUE_STARTED);
+            eventPort.publish(answer.id(), KEY_SQL_MESSAGE, String.valueOf(extra.get(KEY_SQL_MESSAGE)));
             eventPort.publish(answer.id(), "business_query_completed", "1");
         }
-        if (extra.containsKey("doc_reference_json") && extra.containsKey("sql_message")) {
-            eventPort.publish(answer.id(), "evidence_reconciliation_started", "STARTED");
+    }
+
+    /**
+     * 广播双通道证据核验与一致性审计事件。
+     *
+     * @param answer 回答领域快照。
+     * @param extra 动态扩展字段集合。
+     */
+    private void broadcastReconciliation(
+            final AnswerSnapshot answer,
+            final Map<String, Object> extra) {
+        if (extra.containsKey(KEY_DOC_REFERENCE) && extra.containsKey(KEY_SQL_MESSAGE)) {
+            eventPort.publish(answer.id(), "evidence_reconciliation_started", VALUE_STARTED);
             eventPort.publish(answer.id(), "evidence_assessed", "CONSISTENT|0");
         }
     }
