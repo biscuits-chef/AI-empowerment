@@ -545,6 +545,14 @@ public class QuestionAnswerController {
          * 停止完成时间。
          */
         private final Instant cancelledAt;
+        /**
+         * 推荐追问问题列表。
+         */
+        private final List<String> recQuestions;
+        /**
+         * 智能体平台调用耗时（毫秒）。
+         */
+        private final Integer timeCost;
 
         /**
          * 创建 {@code AnswerResponse} 实例。
@@ -567,6 +575,8 @@ public class QuestionAnswerController {
             this.completedAt = answer.completedAt();
             this.cancelRequestedAt = answer.cancelRequestedAt();
             this.cancelledAt = answer.cancelledAt();
+            this.recQuestions = answer.recQuestions();
+            this.timeCost = answer.timeCost();
         }
 
         /**
@@ -667,6 +677,18 @@ public class QuestionAnswerController {
          * @return 停止完成时间。
          */
         public Instant getCancelledAt() { return cancelledAt; }
+        /**
+         * 返回推荐追问问题列表。
+         *
+         * @return 推荐追问问题列表。
+         */
+        public List<String> getRecQuestions() { return recQuestions; }
+        /**
+         * 返回智能体平台调用耗时。
+         *
+         * @return 智能体平台调用耗时。
+         */
+        public Integer getTimeCost() { return timeCost; }
     }
 
     /**

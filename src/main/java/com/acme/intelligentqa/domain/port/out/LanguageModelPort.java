@@ -367,6 +367,18 @@ public interface LanguageModelPort {
          * 模型结束生成的原因。
          */
         private final String finishReason;
+        /**
+         * 智能体返回的推荐追问问题列表。
+         */
+        private final List<String> recQuestions;
+        /**
+         * 智能体服务端执行耗时（毫秒）。
+         */
+        private final Integer timeCost;
+        /**
+         * 动态扩展属性映射。
+         */
+        private final Map<String, Object> extraFields;
 
         /**
          * 创建 {@code GenerationResult} 实例。
@@ -376,8 +388,32 @@ public interface LanguageModelPort {
          * @param finishReason 模型结束生成的原因。
          */
         public GenerationResult(final String modelCode, final String finishReason) {
+            this(modelCode, finishReason, Collections.emptyList(), null, Collections.emptyMap());
+        }
+
+        /**
+         * 创建包含推荐追问、耗时与动态属性的 {@code GenerationResult} 实例。
+         *
+         * @param modelCode 公司模型返回的错误码。
+         * @param finishReason 模型结束生成的原因。
+         * @param recQuestions 推荐追问问题列表。
+         * @param timeCost 智能体平台调用耗时（毫秒）。
+         * @param extraFields 动态扩展属性映射。
+         */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Collections are wrapped in unmodifiable copies")
+        public GenerationResult(
+                final String modelCode,
+                final String finishReason,
+                final List<String> recQuestions,
+                final Integer timeCost,
+                final Map<String, Object> extraFields) {
             this.modelCode = Objects.requireNonNull(modelCode, "modelCode must not be null");
             this.finishReason = Objects.requireNonNull(finishReason, "finishReason must not be null");
+            this.recQuestions = recQuestions == null ? Collections.emptyList()
+                    : Collections.unmodifiableList(new ArrayList<>(recQuestions));
+            this.timeCost = timeCost;
+            this.extraFields = extraFields == null ? Collections.emptyMap()
+                    : Collections.unmodifiableMap(new LinkedHashMap<>(extraFields));
         }
 
         /**
@@ -386,11 +422,35 @@ public interface LanguageModelPort {
          * @return 公司模型返回的错误码。
          */
         public String modelCode() { return modelCode; }
+
         /**
          * 处理模型结束生成的原因。
          *
          * @return 模型结束生成的原因。
          */
         public String finishReason() { return finishReason; }
+
+        /**
+         * 获取推荐追问问题列表。
+         *
+         * @return 不可变的推荐追问问题列表。
+         */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The list is an unmodifiable defensive copy")
+        public List<String> recQuestions() { return recQuestions; }
+
+        /**
+         * 获取智能体服务端执行耗时（毫秒）。
+         *
+         * @return 智能体服务端执行耗时；若未返回则为 null。
+         */
+        public Integer timeCost() { return timeCost; }
+
+        /**
+         * 获取全部动态扩展字段映射。
+         *
+         * @return 不可变的动态扩展字段映射。
+         */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The map is an unmodifiable defensive copy")
+        public Map<String, Object> extraFields() { return extraFields; }
     }
 }

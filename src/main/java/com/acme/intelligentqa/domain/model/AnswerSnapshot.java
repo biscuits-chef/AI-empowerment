@@ -1,6 +1,10 @@
 package com.acme.intelligentqa.domain.model;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -117,6 +121,14 @@ public final class AnswerSnapshot {
      * 停止完成时间。
      */
     private final Instant cancelledAt;
+    /**
+     * 智能体返回的推荐追问问题列表。
+     */
+    private final List<String> recQuestions;
+    /**
+     * 智能体服务端执行耗时（毫秒）。
+     */
+    private final Integer timeCost;
 
     /**
      * 创建 {@code AnswerSnapshot} 实例。
@@ -205,6 +217,50 @@ public final class AnswerSnapshot {
             final String cancelErrorCode,
             final Instant cancelRequestedAt,
             final Instant cancelledAt) {
+        this(id, conversationId, questionId, traceId, regeneratedFromAnswerId, status,
+                content, errorCode, createdAt, completedAt, cancelReason, cancelledStage,
+                cancelErrorCode, cancelRequestedAt, cancelledAt, Collections.emptyList(), null);
+    }
+
+    /**
+     * 创建包含推荐追问与耗时的 {@code AnswerSnapshot} 实例。
+     *
+     * @param id 唯一标识。
+     * @param conversationId 会话 ID。
+     * @param questionId 问题 ID。
+     * @param traceId 链路追踪 ID。
+     * @param regeneratedFromAnswerId 原回答 ID。
+     * @param status 业务状态。
+     * @param content 内容。
+     * @param errorCode 错误码。
+     * @param createdAt 创建时间。
+     * @param completedAt 完成时间。
+     * @param cancelReason 停止原因。
+     * @param cancelledStage 停止时所处阶段。
+     * @param cancelErrorCode 停止失败错误码。
+     * @param cancelRequestedAt 停止请求时间。
+     * @param cancelledAt 停止完成时间。
+     * @param recQuestions 推荐追问问题列表。
+     * @param timeCost 智能体平台调用耗时（毫秒）。
+     */
+    public AnswerSnapshot(
+            final UUID id,
+            final UUID conversationId,
+            final UUID questionId,
+            final UUID traceId,
+            final UUID regeneratedFromAnswerId,
+            final Status status,
+            final String content,
+            final String errorCode,
+            final Instant createdAt,
+            final Instant completedAt,
+            final String cancelReason,
+            final String cancelledStage,
+            final String cancelErrorCode,
+            final Instant cancelRequestedAt,
+            final Instant cancelledAt,
+            final List<String> recQuestions,
+            final Integer timeCost) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.conversationId = Objects.requireNonNull(conversationId, "conversationId must not be null");
         this.questionId = Objects.requireNonNull(questionId, "questionId must not be null");
@@ -220,6 +276,9 @@ public final class AnswerSnapshot {
         this.cancelErrorCode = cancelErrorCode;
         this.cancelRequestedAt = cancelRequestedAt;
         this.cancelledAt = cancelledAt;
+        this.recQuestions = recQuestions == null
+                ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(recQuestions));
+        this.timeCost = timeCost;
     }
 
     /**
@@ -312,4 +371,23 @@ public final class AnswerSnapshot {
      * @return 停止完成时间。
      */
     public Instant cancelledAt() { return cancelledAt; }
+
+    /**
+     * 获取推荐追问问题列表。
+     *
+     * @return 不可变的推荐追问问题列表。
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The list is an unmodifiable defensive copy")
+    public List<String> recQuestions() {
+        return recQuestions;
+    }
+
+    /**
+     * 获取智能体服务端执行耗时（毫秒）。
+     *
+     * @return 智能体服务端执行耗时；若未提供则为 null。
+     */
+    public Integer timeCost() {
+        return timeCost;
+    }
 }

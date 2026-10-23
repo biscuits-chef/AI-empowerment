@@ -11,7 +11,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.acme.intelligentqa.application.workflow.QuestionWorkflowEngine;
+import com.acme.intelligentqa.application.workflow.ScenarioExecutionPlan;
 import com.acme.intelligentqa.application.workflow.ScenarioPlanRegistry;
+import com.acme.intelligentqa.application.workflow.WorkflowNodeCode;
 import com.acme.intelligentqa.application.workflow.node.AnswerGenerationWorkflowNode;
 import com.acme.intelligentqa.application.workflow.node.BusinessDataQueryWorkflowNode;
 import com.acme.intelligentqa.application.workflow.node.EvidenceReconciliationWorkflowNode;
@@ -34,6 +36,7 @@ import com.acme.intelligentqa.domain.model.EvidenceAssessment;
 import com.acme.intelligentqa.domain.model.EntityCandidate;
 import com.acme.intelligentqa.domain.model.KnowledgeChunk;
 import com.acme.intelligentqa.domain.model.QueryIntent;
+import com.acme.intelligentqa.domain.model.QueryScenario;
 import com.acme.intelligentqa.domain.model.QuestionFileReference;
 import com.acme.intelligentqa.domain.model.QuestionSubmission;
 import com.acme.intelligentqa.domain.model.TemporaryFile;
@@ -57,6 +60,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -255,6 +259,58 @@ class QuestionAnswerServiceTest {
         assertEquals("CONSISTENT|0", events.value("evidence_assessed"));
         assertEquals("READY_TO_PERSIST", events.value("generation_completed"));
         assertTrue(events.types().contains("citation"));
+        assertTrue(events.types().contains("completed"));
+    }
+
+    /**
+     * 验证 ADR-025 默认直连大模型工作流，能够完整广播推荐追问与耗时事件并沉淀到快照。
+     */
+    @Test
+    void generatesAnswerViaDefaultDirectLlmWorkflowAndEmitsRecQuestionsAndTimeCost() {
+        final LanguageModelPort model = (request, consumer) -> {
+            consumer.accept("智能体");
+            consumer.accept("生成的最终回答");
+            final Map<String, Object> extra = Collections.singletonMap("debug_trace", "trace-999");
+            return new LanguageModelPort.GenerationResult(
+                    "company-hiagent",
+                    "stream_end",
+                    Arrays.asList("推荐追问1", "推荐追问2"),
+                    850,
+                    extra);
+        };
+        final QuestionWorkflowEngine defaultEngine = new QuestionWorkflowEngine(
+                new ScenarioPlanRegistry(Collections.singletonList(new AnswerGenerationWorkflowNode(model))),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        final QuestionAnswerService directService = new QuestionAnswerService(
+                conversations,
+                contexts,
+                answers,
+                new QuestionFileCoordinator(temporaryFiles),
+                cancellationRepository(),
+                defaultEngine,
+                events,
+                properties(100),
+                cancellationDispatcher(),
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                Runnable::run);
+
+        final AnswerSnapshot submitted = directService.submit(
+                OWNER, conversationId, "咨询理财", "key-direct-1");
+        final AnswerSnapshot completed = answers.find(OWNER, submitted.id()).orElseThrow(AssertionError::new);
+
+        assertEquals(AnswerSnapshot.Status.COMPLETED, completed.status());
+        assertEquals("智能体生成的最终回答", completed.content());
+
+        assertEquals("DUAL_CHANNEL_QA|1", events.value("workflow_plan_selected"));
+        assertEquals("READY_TO_PERSIST", events.value("generation_completed"));
+        assertTrue(events.types().contains("recommendations"));
+        assertTrue(events.types().contains("metadata"));
+        assertTrue(events.types().contains("rec_questions"));
+        assertTrue(events.types().contains("time_cost"));
+        assertEquals("[\"推荐追问1\",\"推荐追问2\"]", events.value("recommendations"));
+        assertEquals("{\"timeCost\":850}", events.lastValue("metadata"));
+        assertEquals("推荐追问1\n推荐追问2", events.value("rec_questions"));
+        assertEquals("850", events.value("time_cost"));
         assertTrue(events.types().contains("completed"));
     }
 
@@ -1000,6 +1056,16 @@ class QuestionAnswerServiceTest {
             final EvidenceReconciliationPort reconciliation,
             final LanguageModelPort model,
             final QaProperties properties) {
+        final Map<QueryScenario, ScenarioExecutionPlan> plans = new EnumMap<>(QueryScenario.class);
+        plans.put(QueryScenario.DUAL_CHANNEL_QA, new ScenarioExecutionPlan(
+                QueryScenario.DUAL_CHANNEL_QA,
+                "1",
+                Arrays.asList(
+                        WorkflowNodeCode.QUESTION_UNDERSTANDING,
+                        WorkflowNodeCode.KNOWLEDGE_RETRIEVAL,
+                        WorkflowNodeCode.BUSINESS_DATA_QUERY,
+                        WorkflowNodeCode.EVIDENCE_RECONCILIATION,
+                        WorkflowNodeCode.ANSWER_GENERATION)));
         return new QuestionWorkflowEngine(
                 new ScenarioPlanRegistry(Arrays.asList(
                         new QuestionUnderstandingWorkflowNode(
@@ -1010,7 +1076,8 @@ class QuestionAnswerServiceTest {
                         new KnowledgeRetrievalWorkflowNode(knowledge, properties),
                         new BusinessDataQueryWorkflowNode(business, properties),
                         new EvidenceReconciliationWorkflowNode(reconciliation),
-                        new AnswerGenerationWorkflowNode(model))),
+                        new AnswerGenerationWorkflowNode(model)),
+                        plans),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -1842,6 +1909,27 @@ class QuestionAnswerServiceTest {
                         return event.data();
                     }
                 }
+            }
+            throw new AssertionError("event not found: " + type);
+        }
+
+        /**
+         * 返回指定类型最后出现的事件值。
+         *
+         * @param type 事件类型。
+         * @return 最后一个匹配事件的值。
+         */
+        String lastValue(final String type) {
+            String last = null;
+            for (final List<AnswerEvent> answerEvents : values.values()) {
+                for (final AnswerEvent event : answerEvents) {
+                    if (event.type().equals(type)) {
+                        last = event.data();
+                    }
+                }
+            }
+            if (last != null) {
+                return last;
             }
             throw new AssertionError("event not found: " + type);
         }

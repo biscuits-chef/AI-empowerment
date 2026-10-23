@@ -2,12 +2,12 @@ package com.acme.intelligentqa.application.workflow;
 
 import com.acme.intelligentqa.domain.model.QueryScenario;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,25 +21,44 @@ public class ScenarioPlanRegistry {
     private final Map<QueryScenario, ScenarioExecutionPlan> plans;
 
     /**
-     * 创建第一阶段场景计划注册表。
+     * 创建第一阶段场景计划注册表，采用默认生产执行计划。
      *
      * @param registeredNodes Spring 收集的全部工作流节点。
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Nodes are copied into a private immutable map")
+    @Autowired
     public ScenarioPlanRegistry(final List<WorkflowNode> registeredNodes) {
-        nodes = indexNodes(registeredNodes);
+        this(registeredNodes, defaultPlans());
+    }
+
+    /**
+     * 创建指定场景计划的注册表，供测试或自定义计划场景使用。
+     *
+     * @param registeredNodes 收集的工作流节点。
+     * @param customPlans 自定义场景计划映射。
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Nodes are copied into a private immutable map")
+    public ScenarioPlanRegistry(
+            final List<WorkflowNode> registeredNodes,
+            final Map<QueryScenario, ScenarioExecutionPlan> customPlans) {
+        this.nodes = indexNodes(registeredNodes);
+        final Map<QueryScenario, ScenarioExecutionPlan> configured = new EnumMap<>(customPlans);
+        validatePlans(configured, this.nodes);
+        this.plans = Collections.unmodifiableMap(configured);
+    }
+
+    /**
+     * 构造默认生产环境场景计划。
+     *
+     * @return 默认场景计划映射。
+     */
+    private static Map<QueryScenario, ScenarioExecutionPlan> defaultPlans() {
         final Map<QueryScenario, ScenarioExecutionPlan> configured = new EnumMap<>(QueryScenario.class);
+        // ADR-025：将问答流水线编排上移至底座智能体平台（HiAgent），本地仅保留回答生成节点直连智能体
         configured.put(QueryScenario.DUAL_CHANNEL_QA, new ScenarioExecutionPlan(
                 QueryScenario.DUAL_CHANNEL_QA,
                 "1",
-                Arrays.asList(
-                        WorkflowNodeCode.QUESTION_UNDERSTANDING,
-                        WorkflowNodeCode.KNOWLEDGE_RETRIEVAL,
-                        WorkflowNodeCode.BUSINESS_DATA_QUERY,
-                        WorkflowNodeCode.EVIDENCE_RECONCILIATION,
-                        WorkflowNodeCode.ANSWER_GENERATION)));
-        validatePlans(configured, nodes);
-        plans = Collections.unmodifiableMap(configured);
+                Collections.singletonList(WorkflowNodeCode.ANSWER_GENERATION)));
+        return configured;
     }
 
     /**

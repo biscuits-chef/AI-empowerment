@@ -13,7 +13,9 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -85,6 +87,20 @@ class QuestionWorkflowEngineTest {
     }
 
     /**
+     * 验证双通道默认计划仅包含回答生成节点。
+     */
+    @Test
+    void defaultPlanForDualChannelQaContainsOnlyAnswerGeneration() {
+        final List<WorkflowNode> nodes = new ArrayList<>();
+        for (final WorkflowNodeCode code : WorkflowNodeCode.values()) {
+            nodes.add(new FakeWorkflowNode(code, new ArrayList<>(), true, WorkflowNodeResult.CONTINUE));
+        }
+        final ScenarioPlanRegistry registry = new ScenarioPlanRegistry(nodes);
+        final ScenarioExecutionPlan plan = registry.planFor(QueryScenario.DUAL_CHANNEL_QA);
+        assertEquals(Collections.singletonList(WorkflowNodeCode.ANSWER_GENERATION), plan.nodeCodes());
+    }
+
+    /**
      * 验证注册表在启动阶段拒绝缺少计划必需节点的配置。
      */
     @Test
@@ -119,8 +135,18 @@ class QuestionWorkflowEngineTest {
                     code != skippedNode,
                     code == stoppingNode ? WorkflowNodeResult.STOP : WorkflowNodeResult.CONTINUE));
         }
+        final Map<QueryScenario, ScenarioExecutionPlan> plans = new EnumMap<>(QueryScenario.class);
+        plans.put(QueryScenario.DUAL_CHANNEL_QA, new ScenarioExecutionPlan(
+                QueryScenario.DUAL_CHANNEL_QA,
+                "1",
+                Arrays.asList(
+                        WorkflowNodeCode.QUESTION_UNDERSTANDING,
+                        WorkflowNodeCode.KNOWLEDGE_RETRIEVAL,
+                        WorkflowNodeCode.BUSINESS_DATA_QUERY,
+                        WorkflowNodeCode.EVIDENCE_RECONCILIATION,
+                        WorkflowNodeCode.ANSWER_GENERATION)));
         return new QuestionWorkflowEngine(
-                new ScenarioPlanRegistry(nodes), Clock.fixed(NOW, ZoneOffset.UTC));
+                new ScenarioPlanRegistry(nodes, plans), Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     /**

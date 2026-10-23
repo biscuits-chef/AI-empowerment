@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -131,7 +132,7 @@ public final class CompanyModelApiClient {
         try {
             final String appConversationId = resolveAppConversationId(request);
             control.onAppConversationId(appConversationId);
-            final String query = promptFactory.create(request);
+            final String query = buildStructuredQuery(request.question());
             final ChatQueryRequest body = new ChatQueryRequest(
                     request.ownerId(), appConversationId, query, "streaming", false);
             final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
@@ -143,9 +144,17 @@ public final class CompanyModelApiClient {
                 throw new DependencyUnavailableException(
                         "COMPANY_MODEL_EMPTY_RESPONSE", "company model stream did not contain an Answer field");
             }
-            LOGGER.info("COMPANY MODEL SSE summary: messageId={}, chars={}",
-                    maskPlatformId(decoder.lastMessageId()), decoder.totalAnswerCharacters());
-            return new LanguageModelPort.GenerationResult("company-hiagent", "stream_end");
+            LOGGER.info("COMPANY MODEL SSE summary: messageId={}, chars={}, timeCost={}ms, recQuestions={}",
+                    maskPlatformId(decoder.lastMessageId()),
+                    decoder.totalAnswerCharacters(),
+                    decoder.timeCost(),
+                    decoder.recQuestions().size());
+            return new LanguageModelPort.GenerationResult(
+                    "company-hiagent",
+                    "stream_end",
+                    decoder.recQuestions(),
+                    decoder.timeCost(),
+                    decoder.extraFields());
         } catch (final DependencyUnavailableException exception) {
             LOGGER.error("Company model generation failed: {}", exception.getMessage());
             throw exception;
@@ -204,6 +213,25 @@ public final class CompanyModelApiClient {
     private void logChatQuerySummary(final String query) {
         LOGGER.info("COMPANY MODEL CHAT REQUEST: queryChars={}, responseMode=streaming, pubAgentJump=false",
                 query == null ? 0 : query.length());
+    }
+
+    /**
+     * 将用户提问包装为平台智能体流水线要求的 JSON 结构体字符串。
+     *
+     * @param content 用户原始提问内容。
+     * @return 序列化后的 Query JSON 字符串。
+     */
+    private String buildStructuredQuery(final String content) {
+        final Map<String, String> queryStruct = new LinkedHashMap<>();
+        queryStruct.put("mode", "auto");
+        queryStruct.put("content", content);
+        queryStruct.put("stream", "0");
+        try {
+            return objectMapper.writeValueAsString(queryStruct);
+        } catch (final IOException exception) {
+            LOGGER.warn("Failed to serialize structured Query, fallback to raw content: {}", exception.getMessage());
+            return content;
+        }
     }
 
     /**

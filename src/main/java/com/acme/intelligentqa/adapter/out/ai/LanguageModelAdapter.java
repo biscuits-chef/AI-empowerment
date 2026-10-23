@@ -1,10 +1,11 @@
 package com.acme.intelligentqa.adapter.out.ai;
 
 import com.acme.intelligentqa.config.QaProperties;
-import com.acme.intelligentqa.domain.model.BusinessFact;
-import com.acme.intelligentqa.domain.port.out.LanguageModelPort;
 import com.acme.intelligentqa.domain.port.out.LanguageModelCancellationPort;
+import com.acme.intelligentqa.domain.port.out.LanguageModelPort;
 import com.acme.intelligentqa.infrastructure.companymodel.CompanyModelApiClient;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.function.Consumer;
 import org.springframework.stereotype.Component;
 
@@ -67,6 +68,25 @@ public class LanguageModelAdapter implements LanguageModelPort, LanguageModelCan
             final GenerationRequest request,
             final Consumer<String> chunkConsumer,
             final GenerationControl control) {
+        // ==================== 固定模拟返回（最小化改动，方便注释与验证） ====================
+        // 验证完成后或接入真实外部大模型服务时，注释掉本模拟段并恢复下方原始调用逻辑：
+        final String[] chunks = {
+                "根据公司最新业务规范与管理规定，",
+                "您所咨询的产品与业务支持全流程线上办理。\n",
+                "请准备好相关申请材料与身份凭证，",
+                "登录统一协同门户进入【业务办理】模块提交审核，",
+                "审核通过后即刻生效。"
+        };
+        for (final String chunk : chunks) {
+            chunkConsumer.accept(chunk);
+        }
+        return new GenerationResult(
+                "mock-model",
+                "stop",
+                Arrays.asList("如何在线办理该业务？", "办理该业务需要准备哪些材料？", "业务办理的审核周期是多久？"),
+                850,
+                Collections.emptyMap());
+        /*
         if (!properties.demoMode()) {
             return companyModelApiClient.generate(request, chunkConsumer, control);
         }
@@ -80,6 +100,8 @@ public class LanguageModelAdapter implements LanguageModelPort, LanguageModelCan
             chunkConsumer.accept("以上为开发环境模拟回答，正式环境将由公司大模型依据证据整理。");
         }
         return new GenerationResult("demo-model", "stop");
+        */
+        // =========================================================================
     }
 
     /**

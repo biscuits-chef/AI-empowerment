@@ -113,6 +113,10 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
      * 异步任务执行器。
      */
     private final Executor executor;
+    /**
+     * 回答完成收敛协调器。
+     */
+    private final AnswerCompletionHandler completionHandler;
 
     /**
      * 创建 {@code QuestionAnswerService} 实例。
@@ -168,6 +172,8 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
         this.cancellationDispatcher = cancellationDispatcher;
         this.clock = clock;
         this.executor = executor;
+        this.completionHandler = new AnswerCompletionHandler(
+                answerRepository, eventPort, cancellationDispatcher, clock);
     }
 
     /**
@@ -486,11 +492,7 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
                 return;
             }
             ensureNotCancelled(answer.id());
-            if (answerRepository.complete(answer.id(), content.toString(), Instant.now(clock))) {
-                eventPort.publish(answer.id(), "completed", workflowContext.finishReason());
-            } else {
-                cancellationDispatcher.dispatch(answer.id());
-            }
+            completionHandler.complete(answer, content.toString(), workflowContext);
         } catch (final GenerationCancelledException exception) {
             cancellationDispatcher.dispatch(answer.id());
         } catch (final DependencyUnavailableException exception) {
@@ -529,8 +531,12 @@ public class QuestionAnswerService implements QuestionAnswerUseCase {
                 eventPort.publish(context.answer().id(), EVENT_EVIDENCE_RECONCILIATION_STARTED, "STARTED");
                 break;
             case ANSWER_GENERATION:
+                eventPort.publish(
+                        context.answer().id(),
+                        EVENT_WORKFLOW_PLAN_SELECTED,
+                        context.scenario().name() + "|" + context.planVersion());
                 update(context.answer().id(), AnswerSnapshot.Status.GENERATING, "generation_started");
-                if (context.evidenceAssessment().manualReviewRequired()) {
+                if (context.evidenceAssessment() != null && context.evidenceAssessment().manualReviewRequired()) {
                     eventPort.publish(context.answer().id(), "manual_review_required", "EVIDENCE_CONFLICT");
                 }
                 break;

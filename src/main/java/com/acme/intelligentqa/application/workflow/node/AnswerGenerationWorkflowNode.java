@@ -7,8 +7,10 @@ import com.acme.intelligentqa.application.workflow.WorkflowNodeResult;
 import com.acme.intelligentqa.domain.model.BusinessFact;
 import com.acme.intelligentqa.domain.model.EvidenceAssessment;
 import com.acme.intelligentqa.domain.model.KnowledgeChunk;
+import com.acme.intelligentqa.domain.model.QueryIntent;
 import com.acme.intelligentqa.domain.port.out.LanguageModelPort;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
@@ -50,30 +52,44 @@ public class AnswerGenerationWorkflowNode implements WorkflowNode {
      */
     @Override
     public WorkflowNodeResult execute(final QuestionWorkflowContext context) {
-        if (context.evidenceAssessment().status() == EvidenceAssessment.Status.INSUFFICIENT) {
+        if (context.evidenceAssessment() != null
+                && context.evidenceAssessment().status() == EvidenceAssessment.Status.INSUFFICIENT) {
             context.emit(INSUFFICIENT_EVIDENCE_MESSAGE);
             context.finishReason("insufficient_evidence");
             return WorkflowNodeResult.CONTINUE;
         }
-        if (context.evidenceAssessment().manualReviewRequired()) {
+        if (context.evidenceAssessment() != null
+                && context.evidenceAssessment().manualReviewRequired()) {
             context.emit(conflictNotice(
                     context.knowledge(), context.businessFacts(), context.evidenceAssessment()));
         }
+        final String question = context.resolvedQuestion() != null
+                ? context.resolvedQuestion() : context.question();
+        final QueryIntent intent = context.intent() != null
+                ? context.intent() : new QueryIntent(QueryIntent.Type.UNSUPPORTED, 1.0D, Collections.emptyMap());
+        final EvidenceAssessment assessment = context.evidenceAssessment() != null
+                ? context.evidenceAssessment()
+                : new EvidenceAssessment(EvidenceAssessment.Status.CONSISTENT, Collections.emptyList());
         final LanguageModelPort.GenerationResult result = languageModel.generate(
                 new LanguageModelPort.GenerationRequest(
                         context.ownerId(),
                         context.answer().conversationId(),
                         context.appConversationId(),
-                        context.resolvedQuestion(),
-                        context.intent(),
+                        question,
+                        intent,
                         context.entitySourceMessageIds(),
-                        context.evidenceAssessment(),
+                        assessment,
                         context.history(),
                         context.knowledge(),
                         context.businessFacts()),
                 context::emit,
                 context.generationControl());
-        context.finishReason(Objects.requireNonNull(result, "generation result must not be null").finishReason());
+        final LanguageModelPort.GenerationResult safeResult = Objects.requireNonNull(
+                result, "generation result must not be null");
+        context.finishReason(safeResult.finishReason());
+        context.recQuestions(safeResult.recQuestions());
+        context.timeCost(safeResult.timeCost());
+        context.extraFields(safeResult.extraFields());
         return WorkflowNodeResult.CONTINUE;
     }
 

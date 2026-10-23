@@ -4,9 +4,12 @@ import com.acme.intelligentqa.common.error.DependencyUnavailableException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +41,7 @@ final class CompanyModelEventDecoder {
      */
     private static final List<String> ERROR_FIELDS = Collections.unmodifiableList(
             Arrays.asList("error_msg", "message", "error", "detail"));
+
 
     /**
      * 智能体错误事件名称。
@@ -110,6 +114,21 @@ final class CompanyModelEventDecoder {
     private String lastMessageId;
 
     /**
+     * 智能体返回的推荐追问问题列表。
+     */
+    private final List<String> recQuestions = new ArrayList<>();
+
+    /**
+     * 智能体服务端执行耗时（毫秒）。
+     */
+    private Integer timeCost;
+
+    /**
+     * 动态收集的未知扩展属性映射。
+     */
+    private final Map<String, Object> extraFields = new LinkedHashMap<>();
+
+    /**
      * 已成功推送给调用方的回答总字符数。
      */
     private int totalAnswerCharacters = 0;
@@ -154,7 +173,36 @@ final class CompanyModelEventDecoder {
         logRawEvent(root, data);
         checkErrorEvent(root);
         notifyMessageId(root, messageIdConsumer);
+        extractRootPayload(root);
         emitAnswer(root, consumer);
+    }
+
+    /**
+     * 从根数据节点提取推荐问题、耗时以及未知动态扩展字段。
+     *
+     * @param root JSON 根节点。
+     */
+    private void extractRootPayload(final JsonNode root) {
+        final CompanyModelPayload payload = CompanyModelPayload.fromRoot(root, objectMapper);
+        if (payload != null) {
+            applyPayload(payload);
+        }
+    }
+
+    /**
+     * 将解析出的结构化载体数据合并至当前解码器状态。
+     *
+     * @param payload 结构化模型载体。
+     */
+    private void applyPayload(final CompanyModelPayload payload) {
+        if (!payload.getRecQuestions().isEmpty()) {
+            this.recQuestions.clear();
+            this.recQuestions.addAll(payload.getRecQuestions());
+        }
+        if (payload.getTimeCost() != null) {
+            this.timeCost = payload.getTimeCost();
+        }
+        this.extraFields.putAll(payload.getExtraFields());
     }
 
     /**
@@ -235,6 +283,23 @@ final class CompanyModelEventDecoder {
      * @return 提取后的纯文本回答；无法解析为 JSON 时返回原值。
      */
     private String extractInnerAnswer(final String rawAnswer) {
+        final CompanyModelPayload payload = CompanyModelPayload.fromInner(rawAnswer, objectMapper);
+        if (payload != null) {
+            applyPayload(payload);
+            if (payload.getAnswer() != null) {
+                return payload.getAnswer();
+            }
+        }
+        return parseFallbackInnerAnswer(rawAnswer);
+    }
+
+    /**
+     * 当结构化载体未解析到 answer 时，回退查找通用字段名。
+     *
+     * @param rawAnswer 原始回答字符串。
+     * @return 提取出的字段文本，或者原始字符串。
+     */
+    private String parseFallbackInnerAnswer(final String rawAnswer) {
         if (rawAnswer == null) {
             return null;
         }
@@ -430,6 +495,33 @@ final class CompanyModelEventDecoder {
      */
     int totalAnswerCharacters() {
         return totalAnswerCharacters;
+    }
+
+    /**
+     * 获取解析出的推荐追问问题列表。
+     *
+     * @return 不可变的推荐追问问题列表。
+     */
+    List<String> recQuestions() {
+        return Collections.unmodifiableList(new ArrayList<>(recQuestions));
+    }
+
+    /**
+     * 获取智能体服务端执行耗时（毫秒）。
+     *
+     * @return 智能体服务端执行耗时；若未返回则为 null。
+     */
+    Integer timeCost() {
+        return timeCost;
+    }
+
+    /**
+     * 获取全部动态扩展字段。
+     *
+     * @return 不可变的动态扩展字段映射。
+     */
+    Map<String, Object> extraFields() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(extraFields));
     }
 
 }

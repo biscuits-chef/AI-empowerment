@@ -202,4 +202,57 @@ class CompanyModelEventDecoderTest {
 
         assertEquals("msg-standard-002", capturedId.get());
     }
+
+    /**
+     * 验证能够从嵌套 JSON 结构体中解析推荐追问、耗时及动态扩展属性。
+     *
+     * @throws IOException 当解析发生 IO 错误时抛出。
+     */
+    @Test
+    void decodesStructuredJsonWithRecQuestionsAndTimeCostAndExtraFields() throws IOException {
+        final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
+        final List<String> chunks = new ArrayList<>();
+
+        final String payload = "{\"answer\":\"正式回答内容\","
+                + "\"rec_questions\":[\"推荐问题一\",\"推荐问题二\"],"
+                + "\"time_cost\":1234,"
+                + "\"confidence\":0.98,"
+                + "\"custom_source\":\"doc_v1\"}";
+        final String frame = "{\"Answer\":" + objectMapper.writeValueAsString(payload) + "}";
+
+        decoder.accept(frame, chunks::add);
+        decoder.flush(chunks::add);
+
+        assertTrue(decoder.hasAnswer());
+        assertEquals(java.util.Collections.singletonList("正式回答内容"), chunks);
+        assertEquals(java.util.Arrays.asList("推荐问题一", "推荐问题二"), decoder.recQuestions());
+        assertEquals(1234, decoder.timeCost());
+        assertEquals(0.98, decoder.extraFields().get("confidence"));
+        assertEquals("doc_v1", decoder.extraFields().get("custom_source"));
+    }
+
+    /**
+     * 验证能够从根事件帧直接解析推荐追问、耗时及动态扩展属性。
+     *
+     * @throws IOException 当解析发生 IO 错误时抛出。
+     */
+    @Test
+    void decodesRecQuestionsAndTimeCostFromRootFrame() throws IOException {
+        final CompanyModelEventDecoder decoder = new CompanyModelEventDecoder(objectMapper);
+        final List<String> chunks = new ArrayList<>();
+
+        final String frame = "{\"Answer\":\"根帧回答\","
+                + "\"rec_questions\":[\"单问题\"],"
+                + "\"time_cost\":600,"
+                + "\"custom_tag\":\"audit_ok\"}";
+
+        decoder.accept(frame, chunks::add);
+        decoder.flush(chunks::add);
+
+        assertTrue(decoder.hasAnswer());
+        assertEquals(java.util.Collections.singletonList("根帧回答"), chunks);
+        assertEquals(java.util.Collections.singletonList("单问题"), decoder.recQuestions());
+        assertEquals(600, decoder.timeCost());
+        assertEquals("audit_ok", decoder.extraFields().get("custom_tag"));
+    }
 }

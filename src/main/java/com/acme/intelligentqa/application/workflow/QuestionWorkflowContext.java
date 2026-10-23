@@ -67,6 +67,12 @@ public final class QuestionWorkflowContext {
     private EvidenceAssessment evidenceAssessment;
     /** 大模型或确定性拒答的完成原因。 */
     private String finishReason;
+    /** 智能体返回的推荐追问问题列表。 */
+    private List<String> recQuestions = Collections.emptyList();
+    /** 智能体服务端执行耗时（毫秒）。 */
+    private Integer timeCost;
+    /** 动态收集的未知扩展属性映射。 */
+    private Map<String, Object> extraFields = Collections.emptyMap();
 
     /**
      * 创建单次问答工作流上下文。
@@ -235,6 +241,62 @@ public final class QuestionWorkflowContext {
      * @param value 大模型或确定性回答的完成原因。
      */
     public void finishReason(final String value) { finishReason = requireText(value, "finishReason"); }
+
+    /**
+     * 保存智能体返回的推荐追问问题列表。
+     *
+     * @param values 推荐追问问题列表。
+     */
+    public void recQuestions(final List<String> values) {
+        recQuestions = immutableCopy(values);
+    }
+
+    /**
+     * 获取推荐追问问题列表。
+     *
+     * @return 不可变的推荐追问问题列表。
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The list is an unmodifiable defensive copy")
+    public List<String> recQuestions() {
+        return recQuestions;
+    }
+
+    /**
+     * 保存智能体服务端执行耗时。
+     *
+     * @param value 智能体服务端执行耗时（毫秒）。
+     */
+    public void timeCost(final Integer value) {
+        timeCost = value;
+    }
+
+    /**
+     * 获取智能体服务端执行耗时。
+     *
+     * @return 智能体服务端执行耗时（毫秒）；未提供时为 null。
+     */
+    public Integer timeCost() {
+        return timeCost;
+    }
+
+    /**
+     * 保存动态扩展属性。
+     *
+     * @param values 动态扩展属性映射。
+     */
+    public void extraFields(final Map<String, Object> values) {
+        extraFields = immutableMap(values);
+    }
+
+    /**
+     * 获取动态扩展属性映射。
+     *
+     * @return 不可变的动态扩展属性映射。
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The map is an unmodifiable defensive copy")
+    public Map<String, Object> extraFields() {
+        return extraFields;
+    }
 
     /**
      * 返回用户所有者 ID。

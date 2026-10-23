@@ -18,6 +18,7 @@ import com.acme.intelligentqa.domain.model.QueryIntent;
 import com.acme.intelligentqa.domain.port.out.LanguageModelPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -513,6 +514,73 @@ class CompanyModelApiClientTest {
 
         assertEquals("company-hiagent", result.modelCode());
         assertEquals(Collections.singletonList("最终正文"), chunks);
+        server.verify();
+    }
+
+    /**
+     * 验证流式响应携带推荐追问、耗时及动态扩展属性时完整注入生成结果。
+     */
+    @Test
+    void populatesRecQuestionsAndTimeCostAndExtraFieldsInGenerationResult() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, new ObjectMapper(), new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"company-conversation-structured\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "data: {\"Answer\":\"结构化回答\","
+                                + "\"rec_questions\":[\"推荐问题A\",\"推荐问题B\"],"
+                                + "\"time_cost\":888,\"extra_score\":99}\n\n"
+                                + "data: [DONE]\n\n",
+                        MediaType.TEXT_EVENT_STREAM));
+        final List<String> chunks = new ArrayList<>();
+
+        final LanguageModelPort.GenerationResult result =
+                client.generate(request("user-structured"), chunks::add);
+
+        assertEquals("company-hiagent", result.modelCode());
+        assertEquals(Collections.singletonList("结构化回答"), chunks);
+        assertEquals(Arrays.asList("推荐问题A", "推荐问题B"), result.recQuestions());
+        assertEquals(888, result.timeCost());
+        assertEquals(99, result.extraFields().get("extra_score"));
+        server.verify();
+    }
+
+    /**
+     * 验证上送大模型的 Query 字段严格封装为 mode=auto 且 stream=0 的 JSON 结构体字符串。
+     */
+    @Test
+    void formatsQueryAsStructuredJsonStringWithAgentModeAndNonThinkingStream() {
+        final RestTemplate restTemplate = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        final CompanyModelProperties properties = properties(true);
+        final ObjectMapper mapper = new ObjectMapper();
+        final CompanyModelApiClient client = new CompanyModelApiClient(
+                properties, restTemplate, mapper, new CompanyModelPromptFactory(properties));
+        server.expect(requestTo(BASE_URL + "/create_conversation"))
+                .andRespond(withSuccess(
+                        "{\"Conversation\":{\"AppConversationID\":\"conv-query-format\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/chat_query"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("{"
+                        + "\"UserID\":\"user-query\","
+                        + "\"AppConversationID\":\"conv-query-format\","
+                        + "\"ResponseMode\":\"streaming\","
+                        + "\"PubAgentJump\":false,"
+                        + "\"Query\":\"{\\\"mode\\\":\\\"auto\\\","
+                        + "\\\"content\\\":\\\"产品费率是多少\\\","
+                        + "\\\"stream\\\":\\\"0\\\"}\"}", false))
+                .andRespond(withSuccess(
+                        "data: {\"Answer\":\"ok\"}\n\ndata: [DONE]\n\n", MediaType.TEXT_EVENT_STREAM));
+
+        client.generate(request("user-query"), chunk -> { });
         server.verify();
     }
 
